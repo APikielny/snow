@@ -7,8 +7,12 @@
 // Note: You DO NOT have to install taichi or taichi_mpm.
 // You only need [taichi.h] - see below for instructions.
 #include "taichi.h"
+#include <math.h> 
+#include <iostream>
 
 using namespace taichi;
+using namespace std;
+
 using Vec = Vector2;
 using Mat = Matrix2;
 
@@ -39,6 +43,8 @@ struct Particle
 {
     // Position and velocity
     Vec x, v;
+    //volume
+    real vol;
     // Deformation gradient
     Mat F;
     // Affine momentum from APIC
@@ -50,11 +56,27 @@ struct Particle
 
     Particle(Vec x, int c, Vec v = Vec(0)) : x(x),
                                              v(v),
+                                             vol(0),
                                              F(1),
                                              C(0),
                                              Jp(1),
                                              c(c) {}
 };
+
+real weight(real x)
+{
+    real abs_x = abs(x);
+    if (abs_x < 1.f/80.f)
+    {
+        return 0.5f * pow(abs_x, 3.0) - pow(abs_x, 2.0) + 2.0f / 3.0f;
+    }
+    if (abs_x < 2.f/80.f)
+    {
+        return -1.0f / 6.0f * pow(abs_x, 3.0) + pow(abs_x, 2.0) - 2.0f * abs_x + 4.0f / 3.0f;
+    }
+    return 0;
+}
+
 
 std::vector<Particle> particles;
 
@@ -68,20 +90,118 @@ void initialize()
     {
         // element-wise floor
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+        
+        //loop through neighboring grids [-2,2]
+        //add weight * particle_mass to all neighboring grid cells
+        for (int i = -2; i < 3; i++){
+            for (int j = -2; j < 3; j++){
+                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
 
-        //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
-        Vec fx = p.x * inv_dx - base_coord.cast<real>();
+                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                //compute weight
 
-        //compute weight
-        real N = weight(fx[0]) * weight(fx[1]);
+                real N = weight(fx[0]) * weight(fx[1]);
+                        //add mass to grid
 
-        //add mass to grid
-        grid[base_coord[0]][base_coord[1]].z += N * particle_mass;
+                grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
+                }
+            }
+        }
     }
     //initializing particle volumes based on density of grid
     for (auto &p : particles)
     {
+        real density;
+        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+                for (int i = -2; i < 3; i++){
+                    for (int j = -2; j < 3; j++){
+                        Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                        if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                            //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
+                            Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                            //compute weight
+                            real N = weight(fx[0]) * weight(fx[1]);
+                            // h^3 = dx*dx*dx
+                            density += particle_mass * N / (dx*dx*dx);
+                }
+            }
+        }
+        p.vol = particle_mass / density;
     }
+}
+
+void update(real dt){
+    // Reset grid
+    std::memset(grid, 0, sizeof(grid));
+    for (auto &p : particles){
+        //transfer mass
+                // element-wise floor
+        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+        
+        //loop through neighboring grids [-2,2]
+        //add weight * particle_mass to all neighboring grid cells
+        for (int i = -2; i < 3; i++){
+            for (int j = -2; j < 3; j++){
+                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
+
+                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                //compute weight
+
+                real N = weight(fx[0]) * weight(fx[1]);
+                        //add mass to grid
+
+                grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
+                }
+            }
+        }
+    }
+        //step one of paper. transfering velocity
+        for (auto &p : particles){
+        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+        
+        //loop through neighboring grids [-2,2]
+        //add velocity  to all neighboring grid cells
+        for (int i = -2; i < 3; i++){
+            for (int j = -2; j < 3; j++){
+                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                real N = weight(fx[0]) * weight(fx[1]);
+                //sum of particle's velocities
+                grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass/grid[curr_grid[0]][curr_grid[1]].z;
+                grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass/grid[curr_grid[0]][curr_grid[1]].z;
+
+                }
+            }
+        }
+
+    }
+
+    //data structure to store grid forces
+    Vector2f forces[n+1][n+1]; //same dimensions as grid
+    //compute forces
+    for (auto &p: particles){
+        //loop through neighbourhood [-2, 2]
+        for (int i = -2; i < 3; i++){
+            for (int j = -2; j < 3; j++){
+                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+
+                //add weighted force to the grid
+                real N = weight(fx[0]) * weight(fx[1]);
+        
+                }
+            }
+        }
+
+    }
+
+
 }
 
 void advance(real dt)
@@ -102,10 +222,10 @@ void advance(real dt)
         real N = weight(fx[0]) * weight(fx[1]);
 
         // // Quadratic kernels [http://mpm.graphics Eqn. 123, with x=fx, fx-1,fx-2]
-        // Vec w[3] = {
-        //     Vec(0.5) * sqr(Vec(1.5) - fx),
-        //     Vec(0.75) - sqr(fx - Vec(1.0)),
-        //     Vec(0.5) * sqr(fx - Vec(0.5))};
+        Vec w[3] = {
+            Vec(0.5) * sqr(Vec(1.5) - fx),
+            Vec(0.75) - sqr(fx - Vec(1.0)),
+            Vec(0.5) * sqr(fx - Vec(0.5))};
 
         // Snow paper computes Lamé parameters based on Fp
         // Compute current Lamé parameters [http://mpm.graphics Eqn. 86]
@@ -138,6 +258,7 @@ void advance(real dt)
         {
             for (int j = 0; j < 3; j++)
             {
+                //not sure what this represents - distance from grid cell to neighbor?
                 auto dpos = (Vec(i, j) - fx) * dx;
                 // Translational momentum
                 Vector3 mass_x_velocity(p.v * particle_mass, particle_mass);
@@ -283,96 +404,58 @@ int main()
     }
 }
 
-real weight(real x)
-{
-    real abs_x = abs(x);
-    if (abs_x < 1)
-    {
-        return 0.5f * pow(abs_x, 3.0f) - pow(abs_x, 2.0f) + 2.0f / 3.0f;
-    }
-    if (abs_x < 2)
-    {
-        return -1.0f / 6.0f * pow(abs_x, 3.0f) + pow(abs_x, 2.0f) - 2.0f * abs_x + 4.0f / 3.0f;
-    }
-    return 0;
-}
 
 /* -----------------------------------------------------------------------------
 ** Reference: A Moving Least Squares Material Point Method with Displacement
               Discontinuity and Two-Way Rigid Body Coupling (SIGGRAPH 2018)
-
   By Yuanming Hu (who also wrote this 88-line version), Yu Fang, Ziheng Ge,
            Ziyin Qu, Yixin Zhu, Andre Pradhana, Chenfanfu Jiang
-
-
 ** Build Instructions:
-
 Step 1: Download and unzip mls-mpm88.zip (Link: http://bit.ly/mls-mpm88)
         Now you should have "mls-mpm88.cpp" and "taichi.h".
-
 Step 2: Compile and run
-
 * Linux:
     g++ mls-mpm88-explained.cpp -std=c++14 -g -lX11 -lpthread -O3 -o mls-mpm
     ./mls-mpm
-
-
 * Windows (MinGW):
     g++ mls-mpm88-explained.cpp -std=c++14 -lgdi32 -lpthread -O3 -o mls-mpm
     .\mls-mpm.exe
-
-
 * Windows (Visual Studio 2017+):
   - Create an "Empty Project"
   - Use taichi.h as the only header, and mls-mpm88-explained.cpp as the only source
   - Change configuration to "Release" and "x64"
   - Press F5 to compile and run
-
-
 * OS X:
     g++ mls-mpm88-explained.cpp -std=c++14 -framework Cocoa -lpthread -O3 -o mls-mpm
     ./mls-mpm
-
-
 ** FAQ:
 Q1: What does "1e-4_f" mean?
 A1: The same as 1e-4f, a float precision real number.
-
 Q2: What is "real"?
 A2: real = float in this file.
-
 Q3: What are the hex numbers like 0xED553B?
 A3: They are RGB color values.
     The color scheme is borrowed from
     https://color.adobe.com/Copy-of-Copy-of-Core-color-theme-11449181/
-
 Q4: How can I get higher-quality?
 A4: Change n to 320; Change dt to 1e-5; Change E to 2e4;
     Change particle per cube from 500 to 8000 (Ln 72).
     After the change the whole animation takes ~3 minutes on my computer.
-
 Q5: How to record the animation?
 A5: Uncomment Ln 2 and 85 and create a folder named "tmp".
     The frames will be saved to "tmp/XXXXX.png".
-
     To get a video, you can use ffmpeg. If you already have taichi installed,
     you can simply go to the "tmp" folder and execute
-
       ti video 60
-
     where 60 stands for 60 FPS. A file named "video.mp4" is what you want.
-
 Q6: How is taichi.h generated?
 A6: Please check out my #include <taichi> talk:
     http://taichi.graphics/wp-content/uploads/2018/11/include_taichi.pdf
     and the generation script:
     https://github.com/yuanming-hu/taichi/blob/master/misc/amalgamate.py
     You can regenerate it using `ti amal`, if you have taichi installed.
-
 Questions go to yuanming _at_ mit.edu
                             or https://github.com/yuanming-hu/taichi_mpm/issues.
-
                                                       Last Update: March 6, 2019
                                                       Version 1.5
-
 ----------------------------------------------------------------------------- */
