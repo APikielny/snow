@@ -27,6 +27,8 @@ const real frame_dt = 1e-3_f;
 const real dx = 1.0_f / n;
 const real inv_dx = 1.0_f / dx;
 
+const real alpha = 0.95;
+
 // Snow material properties
 const auto particle_mass = 1.0_f;
 const auto vol = 1.0_f;        // Particle Volume
@@ -38,6 +40,9 @@ const bool plastic = true;
 // Initial Lamé parameters
 const real mu_0 = E / (2 * (1 + nu));
 const real lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu));
+
+//neighbor grid
+const int neighbor = 2;
 
 struct Particle
 {
@@ -53,6 +58,8 @@ struct Particle
     real Jp;
     // Color
     int c;
+    Mat F_e; //elastic and plastic components of the deformation gradient
+    Mat F_p;
 
     Particle(Vec x, int c, Vec v = Vec(0)) : x(x),
                                              v(v),
@@ -60,7 +67,11 @@ struct Particle
                                              F(1),
                                              C(0),
                                              Jp(1),
+                                             F_e(0),
+                                             F_p(0),
                                              c(c) {}
+                                            
+
 };
 
 real weight(real x)
@@ -73,6 +84,17 @@ real weight(real x)
     if (abs_x < 2.f/80.f)
     {
         return -1.0f / 6.0f * pow(abs_x, 3.0) + pow(abs_x, 2.0) - 2.0f * abs_x + 4.0f / 3.0f;
+    }
+    return 0;
+}
+
+real weightGradient(real x){
+    real abs_x= abs(x);
+    if (abs_x < 1.f/80.f){
+        return 1.5f * pow(abs_x,2) - 2*abs_x;
+    }
+    if (abs_x < 2.f/80.f){
+        return -0.5f * pow(abs_x, 2) + 2 * abs_x - 2;
     }
     return 0;
 }
@@ -96,7 +118,7 @@ void initialize()
         for (int i = -2; i < 3; i++){
             for (int j = -2; j < 3; j++){
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
                 //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
 
                 Vec fx = p.x * inv_dx - curr_grid.cast<real>();
@@ -118,7 +140,7 @@ void initialize()
                 for (int i = -2; i < 3; i++){
                     for (int j = -2; j < 3; j++){
                         Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                        if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                        if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
                             //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
                             Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                             //compute weight
@@ -145,7 +167,7 @@ void update(real dt){
         for (int i = -2; i < 3; i++){
             for (int j = -2; j < 3; j++){
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
                 //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
 
                 Vec fx = p.x * inv_dx - curr_grid.cast<real>();
@@ -168,7 +190,7 @@ void update(real dt){
         for (int i = -2; i < 3; i++){
             for (int j = -2; j < 3; j++){
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
                 Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                 real N = weight(fx[0]) * weight(fx[1]);
                 //sum of particle's velocities
@@ -186,21 +208,85 @@ void update(real dt){
     //compute forces
     for (auto &p: particles){
         //loop through neighbourhood [-2, 2]
+        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+
         for (int i = -2; i < 3; i++){
             for (int j = -2; j < 3; j++){
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x > 0 && curr_grid.x <= 80 && curr_grid.y > 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
                 Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                real V_p_n = determinant(p.F)*p.vol;    //page 6
+                Mat F_hat_E_p = p.F_e; // equation 4 (x_hat = x_i)
+                Mat Re;
+                Mat Se;
+                polar_decomp(p.F_e,Re,Se);
+                Mat J_e = determinant(p.F_e);
+                Mat delta_psi= 2*mu_0*(p.F_e) + lambda_0*(J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
+                Mat stress = (1.0f/determinant(p.F_p) * delta_psi) * transposed(p.F_e); // above quation 6
+                real N = weightGradient(fx[0]) * weightGradient(fx[1]);
+                forces[i][j] += V_p_n * stress * N;  // equation 6
 
-                //add weighted force to the grid
-                real N = weight(fx[0]) * weight(fx[1]);
-        
+                }
+            }
+        }
+    }
+
+    //store old grid velocities
+    Vector2f oldVelocities[n+1][n+1];
+    for (int i = 0; i <= n; i++){
+        for (int j = 0; j <= n; j++){
+            auto &g = grid[i][j];
+            oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity 
+            g.x = g.x + dt * -1.0f * forces[i][j].x / g.z;  //equation 10. update velocity (force is negative of sum in eq 6)
+            g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
+
+        }
+    }
+
+    for (auto &p: particles){
+        Vector2f v_p_n_plus_1;
+         for (int i = -2; i < 3; i++){
+            for (int j = -2; j < 3; j++){
+                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                    v_p_n_plus_1.x += grid[curr_grid.x][curr_grid.y].x *  weightGradient(fx[0]); //?? why does the paper tell us to take the transpose of a scalar
+                    v_p_n_plus_1.y += grid[curr_grid.x][curr_grid.y].y *  weightGradient(fx[1]); 
+                }
+            }
+         }
+         //update force
+         p.F = (Mat(1) + dt*v_p_n_plus_1)*p.F; //equation in step 7, is Mat(1) the identity?
+         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
+         p.F_e = p.F;
+
+
+        //update velocities
+        Vector2f v_PIC;
+        Vector2f v_FLIP = p.vel;
+        for (int i = -2; i < 3; i++){
+            for (int j = -2; j < 3; j++){
+                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                    real N = weight(fx[0]) * weight(fx[1]);
+                    //update PIC velocity
+                    v_PIC.x += grid[curr_grid.x][curr_grid.y].x * N;
+                    v_PIC.y += grid[curr_grid.x][curr_grid.y].y * N;
+
+                    //update FLIP velocity
+                    v_FLIP.x += (grid[curr_grid.x][curr_grid.y].x-oldVelocities[curr_grid.x][curr_grid.y].x) * N;
+                    v_FLIP.y += (grid[curr_grid.x][curr_grid.y].y-oldVelocities[curr_grid.x][curr_grid.y].y) * N;
                 }
             }
         }
 
-    }
+        //update particle velocities
+        p.vel = (1-alpha)*v_PIC + alpha*v_FLIP;
 
+        //update particle positions
+        p.pos += p.vel*dt;
+    }
 
 }
 
