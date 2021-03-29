@@ -86,18 +86,49 @@ real weight(real x)
     return 0;
 }
 
-real weightGradient(real x)
+real N_partial_derivative(real x)
 {
     real abs_x = abs(x);
-    if (abs_x < 1.f / 80.f)
+    if (abs_x < 1.f / n)
     {
         return 1.5f * pow(abs_x, 2) - 2 * abs_x;
     }
-    if (abs_x < 2.f / 80.f)
+    if (abs_x < 2.f / n)
     {
         return -0.5f * pow(abs_x, 2) + 2 * abs_x - 2;
     }
     return 0;
+}
+
+//in: particle position, converted to grid bases (ie 1/h * (x_p - ih)...)
+//out: delta w_i_p or delta w_i_p^T?
+Vec weight_gradient(Vec pos)
+{
+    real N_x_real = N_partial_derivative(pos[0]) * weight(pos[1]);
+    real N_y_real = weight(pos[0]) * N_partial_derivative(pos[1]);
+    Vector2 vec(N_x_real, N_y_real);
+    return vec;
+    // Matrix::field(1, 1);
+
+    // Vector1 N_x = Vector([N_x_real]);
+    // Matrix mat(N_x_real);
+    // Vector1 N_y = Vector([N_y_real]);
+    // Mat weight_gradient = Matrix.rows([ N_x, N_y ]);
+    // return weight_gradient;
+}
+
+//output: m * v_transpose = shape(1,2)
+Vec multiply_vec_transpose(Mat m, Vec v)
+{
+    Vec vec(m[0][0] * v[0] + m[1][0] * v[0], m[0][1] * v[1] + m[1][1] * v[1]);
+    return vec;
+}
+
+Mat vec_times_vec_transpose(Vec v1, Vec v2)
+{
+    Vec row_1 = Vec(v1[0] * v2[0], v1[1] * v2[0]);
+    Vec row_2 = Vec(v1[0] * v2[1], v1[1] * v2[1]);
+    return Mat(row_1, row_2);
 }
 
 std::vector<Particle> particles;
@@ -240,8 +271,8 @@ void update(real dt)
                     Mat J_e = determinant(p.F_e);
                     Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
                     Mat stress = (1.0f / determinant(p.F_p) * delta_psi) * transposed(p.F_e);                     // above quation 6
-                    real N = weightGradient(fx[0]) * weightGradient(fx[1]);
-                    forces[i][j] += V_p_n * stress * N; // equation 6
+                    Vec N = weight_gradient(fx);
+                    forces[i][j] += V_p_n * multiply_vec_transpose(stress, N); // equation 6
                 }
             }
         }
@@ -264,7 +295,7 @@ void update(real dt)
     {
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
-        Vector2f v_p_n_plus_1;
+        Mat v_p_n_plus_1;
         for (int i = -2; i < 3; i++)
         {
             for (int j = -2; j < 3; j++)
@@ -273,8 +304,8 @@ void update(real dt)
                 if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
                 { //check bounds 0 to 80 in both dirs
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                    v_p_n_plus_1.x += grid[curr_grid.x][curr_grid.y].x * weightGradient(fx[0]); //?? why does the paper tell us to take the transpose of a scalar
-                    v_p_n_plus_1.y += grid[curr_grid.x][curr_grid.y].y * weightGradient(fx[1]);
+                    Vec grid_velocity(grid[curr_grid.x][curr_grid.y].x, grid[curr_grid.x][curr_grid.y].y);
+                    v_p_n_plus_1 += vec_times_vec_transpose(grid_velocity, weight_gradient(fx)); //?? why does the paper tell us to take the transpose of a scalar
                 }
             }
         }
@@ -487,12 +518,13 @@ int main()
     int frame = 0;
 
     //initialize particle values
+    initialize();
 
     // Main Loop
     for (int step = 0;; step++)
     {
         // Advance simulation
-        advance(dt);
+        // advance(dt);
 
         // Visualize frame
         if (step % int(frame_dt / dt) == 0)
