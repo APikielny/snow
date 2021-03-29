@@ -7,7 +7,7 @@
 // Note: You DO NOT have to install taichi or taichi_mpm.
 // You only need [taichi.h] - see below for instructions.
 #include "taichi.h"
-#include <math.h> 
+#include <math.h>
 #include <iostream>
 
 using namespace taichi;
@@ -70,35 +70,35 @@ struct Particle
                                              F_e(0),
                                              F_p(0),
                                              c(c) {}
-                                            
-
 };
 
 real weight(real x)
 {
     real abs_x = abs(x);
-    if (abs_x < 1.f/80.f)
+    if (abs_x < 1.f / 80.f)
     {
         return 0.5f * pow(abs_x, 3.0) - pow(abs_x, 2.0) + 2.0f / 3.0f;
     }
-    if (abs_x < 2.f/80.f)
+    if (abs_x < 2.f / 80.f)
     {
         return -1.0f / 6.0f * pow(abs_x, 3.0) + pow(abs_x, 2.0) - 2.0f * abs_x + 4.0f / 3.0f;
     }
     return 0;
 }
 
-real weightGradient(real x){
-    real abs_x= abs(x);
-    if (abs_x < 1.f/80.f){
-        return 1.5f * pow(abs_x,2) - 2*abs_x;
+real weightGradient(real x)
+{
+    real abs_x = abs(x);
+    if (abs_x < 1.f / 80.f)
+    {
+        return 1.5f * pow(abs_x, 2) - 2 * abs_x;
     }
-    if (abs_x < 2.f/80.f){
+    if (abs_x < 2.f / 80.f)
+    {
         return -0.5f * pow(abs_x, 2) + 2 * abs_x - 2;
     }
     return 0;
 }
-
 
 std::vector<Particle> particles;
 
@@ -112,22 +112,25 @@ void initialize()
     {
         // element-wise floor
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
-        
+
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
-        for (int i = -2; i < 3; i++){
-            for (int j = -2; j < 3; j++){
+        for (int i = -2; i < 3; i++)
+        {
+            for (int j = -2; j < 3; j++)
+            {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
-                //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
+                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                { //check bounds 0 to 80 in both dirs
+                    //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
 
-                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                //compute weight
+                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                    //compute weight
 
-                real N = weight(fx[0]) * weight(fx[1]);
-                        //add mass to grid
+                    real N = weight(fx[0]) * weight(fx[1]);
+                    //add mass to grid
 
-                grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
+                    grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
                 }
             }
         }
@@ -137,16 +140,19 @@ void initialize()
     {
         real density;
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
-                for (int i = -2; i < 3; i++){
-                    for (int j = -2; j < 3; j++){
-                        Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                        if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
-                            //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
-                            Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                            //compute weight
-                            real N = weight(fx[0]) * weight(fx[1]);
-                            // h^3 = dx*dx*dx
-                            density += particle_mass * N / (dx*dx*dx);
+        for (int i = -2; i < 3; i++)
+        {
+            for (int j = -2; j < 3; j++)
+            {
+                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                { //check bounds 0 to 80 in both dirs
+                    //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
+                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                    //compute weight
+                    real N = weight(fx[0]) * weight(fx[1]);
+                    // h^3 = dx*dx*dx
+                    density += particle_mass * N / (dx * dx * dx);
                 }
             }
         }
@@ -154,120 +160,140 @@ void initialize()
     }
 }
 
-void update(real dt){
+void update(real dt)
+{
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
-    for (auto &p : particles){
+    for (auto &p : particles)
+    {
         //transfer mass
-                // element-wise floor
+        // element-wise floor
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
-        
+
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
-        for (int i = -2; i < 3; i++){
-            for (int j = -2; j < 3; j++){
+        for (int i = -2; i < 3; i++)
+        {
+            for (int j = -2; j < 3; j++)
+            {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
-                //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
+                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                { //check bounds 0 to 80 in both dirs
+                    //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
 
-                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                //compute weight
+                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                    //compute weight
 
-                real N = weight(fx[0]) * weight(fx[1]);
-                        //add mass to grid
+                    real N = weight(fx[0]) * weight(fx[1]);
+                    //add mass to grid
 
-                grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
+                    grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
                 }
             }
         }
     }
-        //step one of paper. transfering velocity
-        for (auto &p : particles){
+    //step one of paper. transfering velocity
+    for (auto &p : particles)
+    {
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
-        
+
         //loop through neighboring grids [-2,2]
         //add velocity  to all neighboring grid cells
-        for (int i = -2; i < 3; i++){
-            for (int j = -2; j < 3; j++){
+        for (int i = -2; i < 3; i++)
+        {
+            for (int j = -2; j < 3; j++)
+            {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
-                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                real N = weight(fx[0]) * weight(fx[1]);
-                //sum of particle's velocities
-                grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass/grid[curr_grid[0]][curr_grid[1]].z;
-                grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass/grid[curr_grid[0]][curr_grid[1]].z;
-
+                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                { //check bounds 0 to 80 in both dirs
+                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                    real N = weight(fx[0]) * weight(fx[1]);
+                    //sum of particle's velocities
+                    grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
+                    grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
                 }
             }
         }
-
     }
 
     //data structure to store grid forces
-    Vector2f forces[n+1][n+1]; //same dimensions as grid
+    Vector2f forces[n + 1][n + 1]; //same dimensions as grid
     //compute forces
-    for (auto &p: particles){
+    for (auto &p : particles)
+    {
         //loop through neighbourhood [-2, 2]
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
-        for (int i = -2; i < 3; i++){
-            for (int j = -2; j < 3; j++){
+        for (int i = -2; i < 3; i++)
+        {
+            for (int j = -2; j < 3; j++)
+            {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
-                Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                real V_p_n = determinant(p.F)*p.vol;    //page 6
-                Mat F_hat_E_p = p.F_e; // equation 4 (x_hat = x_i)
-                Mat Re;
-                Mat Se;
-                polar_decomp(p.F_e,Re,Se);
-                Mat J_e = determinant(p.F_e);
-                Mat delta_psi= 2*mu_0*(p.F_e) + lambda_0*(J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
-                Mat stress = (1.0f/determinant(p.F_p) * delta_psi) * transposed(p.F_e); // above quation 6
-                real N = weightGradient(fx[0]) * weightGradient(fx[1]);
-                forces[i][j] += V_p_n * stress * N;  // equation 6
-
+                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                { //check bounds 0 to 80 in both dirs
+                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+                    real V_p_n = determinant(p.F) * p.vol; //page 6
+                    Mat F_hat_E_p = p.F_e;                 // equation 4 (x_hat = x_i)
+                    Mat Re;
+                    Mat Se;
+                    polar_decomp(p.F_e, Re, Se);
+                    Mat J_e = determinant(p.F_e);
+                    Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
+                    Mat stress = (1.0f / determinant(p.F_p) * delta_psi) * transposed(p.F_e);                     // above quation 6
+                    real N = weightGradient(fx[0]) * weightGradient(fx[1]);
+                    forces[i][j] += V_p_n * stress * N; // equation 6
                 }
             }
         }
     }
 
     //store old grid velocities
-    Vector2f oldVelocities[n+1][n+1];
-    for (int i = 0; i <= n; i++){
-        for (int j = 0; j <= n; j++){
+    Vector2f oldVelocities[n + 1][n + 1];
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
             auto &g = grid[i][j];
-            oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity 
-            g.x = g.x + dt * -1.0f * forces[i][j].x / g.z;  //equation 10. update velocity (force is negative of sum in eq 6)
+            oldVelocities[i][j] = Vector2f(g.x, g.y);      //store old velocity
+            g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
             g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
-
         }
     }
 
-    for (auto &p: particles){
+    for (auto &p : particles)
+    {
+        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+
         Vector2f v_p_n_plus_1;
-         for (int i = -2; i < 3; i++){
-            for (int j = -2; j < 3; j++){
+        for (int i = -2; i < 3; i++)
+        {
+            for (int j = -2; j < 3; j++)
+            {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                { //check bounds 0 to 80 in both dirs
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                    v_p_n_plus_1.x += grid[curr_grid.x][curr_grid.y].x *  weightGradient(fx[0]); //?? why does the paper tell us to take the transpose of a scalar
-                    v_p_n_plus_1.y += grid[curr_grid.x][curr_grid.y].y *  weightGradient(fx[1]); 
+                    v_p_n_plus_1.x += grid[curr_grid.x][curr_grid.y].x * weightGradient(fx[0]); //?? why does the paper tell us to take the transpose of a scalar
+                    v_p_n_plus_1.y += grid[curr_grid.x][curr_grid.y].y * weightGradient(fx[1]);
                 }
             }
-         }
-         //update force
-         p.F = (Mat(1) + dt*v_p_n_plus_1)*p.F; //equation in step 7, is Mat(1) the identity?
-         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
-         p.F_e = p.F;
-
+        }
+        //update force
+        p.F = (Mat(1) + dt * v_p_n_plus_1) * p.F; //equation in step 7, is Mat(1) the identity?
+        //update elastic compoenent - before we do plasticity the elastic component gets all of the F
+        p.F_e = p.F;
 
         //update velocities
         Vector2f v_PIC;
-        Vector2f v_FLIP = p.vel;
-        for (int i = -2; i < 3; i++){
-            for (int j = -2; j < 3; j++){
+        Vector2f v_FLIP = p.v;
+        for (int i = -2; i < 3; i++)
+        {
+            for (int j = -2; j < 3; j++)
+            {
+
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if ( curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80){//check bounds 0 to 80 in both dirs
+                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                { //check bounds 0 to 80 in both dirs
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                     real N = weight(fx[0]) * weight(fx[1]);
                     //update PIC velocity
@@ -275,19 +301,18 @@ void update(real dt){
                     v_PIC.y += grid[curr_grid.x][curr_grid.y].y * N;
 
                     //update FLIP velocity
-                    v_FLIP.x += (grid[curr_grid.x][curr_grid.y].x-oldVelocities[curr_grid.x][curr_grid.y].x) * N;
-                    v_FLIP.y += (grid[curr_grid.x][curr_grid.y].y-oldVelocities[curr_grid.x][curr_grid.y].y) * N;
+                    v_FLIP.x += (grid[curr_grid.x][curr_grid.y].x - oldVelocities[curr_grid.x][curr_grid.y].x) * N;
+                    v_FLIP.y += (grid[curr_grid.x][curr_grid.y].y - oldVelocities[curr_grid.x][curr_grid.y].y) * N;
                 }
             }
         }
 
         //update particle velocities
-        p.vel = (1-alpha)*v_PIC + alpha*v_FLIP;
+        p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
 
         //update particle positions
-        p.pos += p.vel*dt;
+        p.x += p.v * dt;
     }
-
 }
 
 void advance(real dt)
@@ -489,7 +514,6 @@ int main()
         }
     }
 }
-
 
 /* -----------------------------------------------------------------------------
 ** Reference: A Moving Least Squares Material Point Method with Displacement
