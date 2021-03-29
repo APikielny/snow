@@ -240,8 +240,11 @@ void update(real dt)
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                     real N = weight(fx[0]) * weight(fx[1]);
                     //sum of particle's velocities
-                    grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
-                    grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
+                    if ( grid[curr_grid[0]][curr_grid[1]].z>0.0f){ //only if denominator is not 0
+                        grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
+                        grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
+                    }
+
                 }
             }
         }
@@ -286,8 +289,11 @@ void update(real dt)
         {
             auto &g = grid[i][j];
             oldVelocities[i][j] = Vector2f(g.x, g.y);      //store old velocity
+            if (g.z > 0.0f){    //only if denominator is not 0
             g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
             g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
+            }
+
         }
     }
 
@@ -332,7 +338,7 @@ void update(real dt)
                     v_PIC.x += grid[curr_grid.x][curr_grid.y].x * N;
                     v_PIC.y += grid[curr_grid.x][curr_grid.y].y * N;
 
-                    // //update FLIP velocity
+                    //update FLIP velocity
                     v_FLIP.x += (grid[curr_grid.x][curr_grid.y].x - oldVelocities[curr_grid.x][curr_grid.y].x) * N;
                     v_FLIP.y += (grid[curr_grid.x][curr_grid.y].y - oldVelocities[curr_grid.x][curr_grid.y].y) * N;
                 }
