@@ -223,279 +223,129 @@ void update(real dt)
             }
         }
     }
-    //step one of paper. transfering velocity
-    for (auto &p : particles)
-    {
-        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+    //     //step one of paper. transfering velocity
+    //     for (auto &p : particles)
+    //     {
+    //         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
-        //loop through neighboring grids [-2,2]
-        //add velocity  to all neighboring grid cells
-        for (int i = -2; i < 3; i++)
-        {
-            for (int j = -2; j < 3; j++)
-            {
-                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
-                { //check bounds 0 to 80 in both dirs
-                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                    real N = weight(fx[0]) * weight(fx[1]);
-                    //sum of particle's velocities
-                    grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
-                    grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
-                }
-            }
-        }
-    }
+    //         //loop through neighboring grids [-2,2]
+    //         //add velocity  to all neighboring grid cells
+    //         for (int i = -2; i < 3; i++)
+    //         {
+    //             for (int j = -2; j < 3; j++)
+    //             {
+    //                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+    //                 if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+    //                 { //check bounds 0 to 80 in both dirs
+    //                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+    //                     real N = weight(fx[0]) * weight(fx[1]);
+    //                     //sum of particle's velocities
+    //                     grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
+    //                     grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
+    //                 }
+    //             }
+    //         }
+    //     }
 
-    //data structure to store grid forces
-    Vector2f forces[n + 1][n + 1]; //same dimensions as grid
-    //compute forces
-    for (auto &p : particles)
-    {
-        //loop through neighbourhood [-2, 2]
-        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+    //     //data structure to store grid forces
+    //     Vector2f forces[n + 1][n + 1]; //same dimensions as grid
+    //     //compute forces
+    //     for (auto &p : particles)
+    //     {
+    //         //loop through neighbourhood [-2, 2]
+    //         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
-        for (int i = -2; i < 3; i++)
-        {
-            for (int j = -2; j < 3; j++)
-            {
-                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
-                { //check bounds 0 to 80 in both dirs
-                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                    real V_p_n = determinant(p.F) * p.vol; //page 6
-                    Mat F_hat_E_p = p.F_e;                 // equation 4 (x_hat = x_i)
-                    Mat Re;
-                    Mat Se;
-                    polar_decomp(p.F_e, Re, Se);
-                    Mat J_e = determinant(p.F_e);
-                    Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
-                    Mat stress = (1.0f / determinant(p.F_p) * delta_psi) * transposed(p.F_e);                     // above quation 6
-                    Vec N = weight_gradient(fx);
-                    forces[i][j] += V_p_n * multiply_vec_transpose(stress, N); // equation 6
-                }
-            }
-        }
-    }
+    //         for (int i = -2; i < 3; i++)
+    //         {
+    //             for (int j = -2; j < 3; j++)
+    //             {
+    //                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+    //                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
+    //                 { //check bounds 0 to 80 in both dirs
+    //                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+    //                     real V_p_n = determinant(p.F) * p.vol; //page 6
+    //                     Mat F_hat_E_p = p.F_e;                 // equation 4 (x_hat = x_i)
+    //                     Mat Re;
+    //                     Mat Se;
+    //                     polar_decomp(p.F_e, Re, Se);
+    //                     Mat J_e = determinant(p.F_e);
+    //                     Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
+    //                     Mat stress = (1.0f / determinant(p.F_p) * delta_psi) * transposed(p.F_e);                     // above quation 6
+    //                     Vec N = weight_gradient(fx);
+    //                     forces[i][j] += V_p_n * multiply_vec_transpose(stress, N); // equation 6
+    //                 }
+    //             }
+    //         }
+    //     }
 
-    //store old grid velocities
-    Vector2f oldVelocities[n + 1][n + 1];
-    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j <= n; j++)
-        {
-            auto &g = grid[i][j];
-            oldVelocities[i][j] = Vector2f(g.x, g.y);      //store old velocity
-            g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
-            g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
-        }
-    }
+    //     //store old grid velocities
+    //     Vector2f oldVelocities[n + 1][n + 1];
+    //     for (int i = 0; i <= n; i++)
+    //     {
+    //         for (int j = 0; j <= n; j++)
+    //         {
+    //             auto &g = grid[i][j];
+    //             oldVelocities[i][j] = Vector2f(g.x, g.y);      //store old velocity
+    //             g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
+    //             g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
+    //         }
+    //     }
 
-    for (auto &p : particles)
-    {
-        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
+    //     for (auto &p : particles)
+    //     {
+    //         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
-        Mat v_p_n_plus_1;
-        for (int i = -2; i < 3; i++)
-        {
-            for (int j = -2; j < 3; j++)
-            {
-                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
-                { //check bounds 0 to 80 in both dirs
-                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                    Vec grid_velocity(grid[curr_grid.x][curr_grid.y].x, grid[curr_grid.x][curr_grid.y].y);
-                    v_p_n_plus_1 += vec_times_vec_transpose(grid_velocity, weight_gradient(fx)); //?? why does the paper tell us to take the transpose of a scalar
-                }
-            }
-        }
-        //update force
-        p.F = (Mat(1) + dt * v_p_n_plus_1) * p.F; //equation in step 7, is Mat(1) the identity?
-        //update elastic compoenent - before we do plasticity the elastic component gets all of the F
-        p.F_e = p.F;
+    //         Mat v_p_n_plus_1;
+    //         for (int i = -2; i < 3; i++)
+    //         {
+    //             for (int j = -2; j < 3; j++)
+    //             {
+    //                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+    //                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
+    //                 { //check bounds 0 to 80 in both dirs
+    //                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+    //                     Vec grid_velocity(grid[curr_grid.x][curr_grid.y].x, grid[curr_grid.x][curr_grid.y].y);
+    //                     v_p_n_plus_1 += vec_times_vec_transpose(grid_velocity, weight_gradient(fx)); //?? why does the paper tell us to take the transpose of a scalar
+    //                 }
+    //             }
+    //         }
+    //         //update force
+    //         p.F = (Mat(1) + dt * v_p_n_plus_1) * p.F; //equation in step 7, is Mat(1) the identity?
+    //         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
+    //         p.F_e = p.F;
 
-        //update velocities
-        Vector2f v_PIC;
-        Vector2f v_FLIP = p.v;
-        for (int i = -2; i < 3; i++)
-        {
-            for (int j = -2; j < 3; j++)
-            {
+    //         //update velocities
+    //         Vector2f v_PIC;
+    //         Vector2f v_FLIP = p.v;
+    //         for (int i = -2; i < 3; i++)
+    //         {
+    //             for (int j = -2; j < 3; j++)
+    //             {
 
-                Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
-                { //check bounds 0 to 80 in both dirs
-                    Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                    real N = weight(fx[0]) * weight(fx[1]);
-                    //update PIC velocity
-                    v_PIC.x += grid[curr_grid.x][curr_grid.y].x * N;
-                    v_PIC.y += grid[curr_grid.x][curr_grid.y].y * N;
+    //                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
+    //                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
+    //                 { //check bounds 0 to 80 in both dirs
+    //                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
+    //                     real N = weight(fx[0]) * weight(fx[1]);
+    //                     //update PIC velocity
+    //                     v_PIC.x += grid[curr_grid.x][curr_grid.y].x * N;
+    //                     v_PIC.y += grid[curr_grid.x][curr_grid.y].y * N;
 
-                    //update FLIP velocity
-                    v_FLIP.x += (grid[curr_grid.x][curr_grid.y].x - oldVelocities[curr_grid.x][curr_grid.y].x) * N;
-                    v_FLIP.y += (grid[curr_grid.x][curr_grid.y].y - oldVelocities[curr_grid.x][curr_grid.y].y) * N;
-                }
-            }
-        }
+    //                     //update FLIP velocity
+    //                     v_FLIP.x += (grid[curr_grid.x][curr_grid.y].x - oldVelocities[curr_grid.x][curr_grid.y].x) * N;
+    //                     v_FLIP.y += (grid[curr_grid.x][curr_grid.y].y - oldVelocities[curr_grid.x][curr_grid.y].y) * N;
+    //                 }
+    //             }
+    //         }
 
-        //update particle velocities
-        p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
+    //         //update particle velocities
+    //         p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
 
-        //update particle positions
-        p.x += p.v * dt;
-    }
+    //         //update particle positions
+    //         p.x += p.v * dt;
+    //     }
+    // }
 }
-
-void advance(real dt)
-{
-    // Reset grid
-    std::memset(grid, 0, sizeof(grid));
-
-    // P2G
-    for (auto &p : particles)
-    {
-        // element-wise floor
-        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
-
-        //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
-        Vec fx = p.x * inv_dx - base_coord.cast<real>();
-
-        //compute weight
-        real N = weight(fx[0]) * weight(fx[1]);
-
-        // // Quadratic kernels [http://mpm.graphics Eqn. 123, with x=fx, fx-1,fx-2]
-        Vec w[3] = {
-            Vec(0.5) * sqr(Vec(1.5) - fx),
-            Vec(0.75) - sqr(fx - Vec(1.0)),
-            Vec(0.5) * sqr(fx - Vec(0.5))};
-
-        // Snow paper computes Lamé parameters based on Fp
-        // Compute current Lamé parameters [http://mpm.graphics Eqn. 86]
-        auto e = std::exp(hardening * (1.0f - p.Jp));
-        auto mu = mu_0 * e;
-        auto lambda = lambda_0 * e;
-
-        // Current volume
-        real J = determinant(p.F);
-
-        // Polar decomposition for fixed corotated model
-        Mat r, s;
-        polar_decomp(p.F, r, s);
-
-        // [http://mpm.graphics Paragraph after Eqn. 176]
-        real Dinv = 4 * inv_dx * inv_dx;
-        // [http://mpm.graphics Eqn. 52]
-        auto PF = (2 * mu * (p.F - r) * transposed(p.F) + lambda * (J - 1) * J);
-
-        // Cauchy stress times dt and inv_dx
-        auto stress = -(dt * vol) * (Dinv * PF);
-
-        // Fused APIC momentum + MLS-MPM stress contribution
-        // See http://taichi.graphics/wp-content/uploads/2019/03/mls-mpm-cpic.pdf
-        // Eqn 29
-        auto affine = stress + particle_mass * p.C;
-
-        // P2G
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                //not sure what this represents - distance from grid cell to neighbor?
-                auto dpos = (Vec(i, j) - fx) * dx;
-                // Translational momentum
-                Vector3 mass_x_velocity(p.v * particle_mass, particle_mass);
-                grid[base_coord.x + i][base_coord.y + j] += (w[i].x * w[j].y * (mass_x_velocity + Vector3(affine * dpos, 0)));
-            }
-        }
-    }
-
-    // For all grid nodes
-    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j <= n; j++)
-        {
-            auto &g = grid[i][j];
-            // No need for epsilon here
-            if (g[2] > 0)
-            {
-                // Normalize by mass
-                g /= g[2];
-                // Gravity
-                g += dt * Vector3(0, -200, 0);
-
-                // boundary thickness
-                real boundary = 0.05;
-                // Node coordinates
-                real x = (real)i / n;
-                real y = real(j) / n;
-
-                // Sticky boundary
-                if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-                {
-                    g = Vector3(0);
-                }
-                // Separate boundary
-                if (y < boundary)
-                {
-                    g[1] = std::max(0.0f, g[1]);
-                }
-            }
-        }
-    }
-
-    // G2P
-    for (auto &p : particles)
-    {
-        // element-wise floor
-        Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
-        Vec fx = p.x * inv_dx - base_coord.cast<real>();
-        Vec w[3] = {
-            Vec(0.5) * sqr(Vec(1.5) - fx),
-            Vec(0.75) - sqr(fx - Vec(1.0)),
-            Vec(0.5) * sqr(fx - Vec(0.5))};
-
-        p.C = Mat(0);
-        p.v = Vec(0);
-
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                auto dpos = (Vec(i, j) - fx);
-                auto grid_v = Vec(grid[base_coord.x + i][base_coord.y + j]);
-                auto weight = w[i].x * w[j].y;
-                // Velocity
-                p.v += weight * grid_v;
-                // APIC C
-                p.C += 4 * inv_dx * Mat::outer_product(weight * grid_v, dpos);
-            }
-        }
-
-        // Advection
-        p.x += dt * p.v;
-
-        // MLS-MPM F-update
-        auto F = (Mat(1) + dt * p.C) * p.F;
-
-        Mat svd_u, sig, svd_v;
-        svd(F, svd_u, sig, svd_v);
-
-        // Snow Plasticity
-        for (int i = 0; i < 2 * int(plastic); i++)
-        {
-            sig[i][i] = clamp(sig[i][i], 1.0f - 2.5e-2f, 1.0f + 7.5e-3f);
-        }
-
-        real oldJ = determinant(F);
-        F = svd_u * sig * transposed(svd_v);
-
-        real Jp_new = clamp(p.Jp * oldJ / determinant(F), 0.6f, 20.0f);
-
-        p.Jp = Jp_new;
-        p.F = F;
-    }
-}
-
 // Seed particles with position and color
 void add_object(Vec center, int c)
 {
