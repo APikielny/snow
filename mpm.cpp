@@ -162,6 +162,7 @@ void initialize()
                     //add mass to grid
 
                     grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
+                    printf("mass: %d\n", grid[curr_grid[0]][curr_grid[1]].z);
                 }
             }
         }
@@ -188,6 +189,8 @@ void initialize()
             }
         }
         p.vol = particle_mass / density;
+        // printf("mass, %f, density, %f\n", particle_mass, density);
+        // printf("volume: %lu\n", p.vol);
     }
 }
 
@@ -195,6 +198,41 @@ void update(real dt)
 {
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
+
+    // For all grid nodes
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            auto &g = grid[i][j];
+            // No need for epsilon here
+            if (g[2] > 0)
+            {
+                // Normalize by mass
+                g /= g[2];
+                // Gravity
+                g += dt * Vector3(0, -200, 0);
+
+                // boundary thickness
+                real boundary = 0.05;
+                // Node coordinates
+                real x = (real)i / n;
+                real y = real(j) / n;
+
+                // Sticky boundary
+                if (x < boundary || x > 1 - boundary || y > 1 - boundary)
+                {
+                    g = Vector3(0);
+                }
+                // Separate boundary
+                if (y < boundary)
+                {
+                    g[1] = std::max(0.0f, g[1]);
+                }
+            }
+        }
+    }
+
     for (auto &p : particles)
     {
         //transfer mass
@@ -240,11 +278,11 @@ void update(real dt)
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                     real N = weight(fx[0]) * weight(fx[1]);
                     //sum of particle's velocities
-                    if ( grid[curr_grid[0]][curr_grid[1]].z>0.0f){ //only if denominator is not 0
+                    if (grid[curr_grid[0]][curr_grid[1]].z > 0.0f)
+                    { //only if denominator is not 0
                         grid[curr_grid[0]][curr_grid[1]].x += N * p.v.x * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
                         grid[curr_grid[0]][curr_grid[1]].y += N * p.v.y * particle_mass / grid[curr_grid[0]][curr_grid[1]].z;
                     }
-
                 }
             }
         }
@@ -288,12 +326,12 @@ void update(real dt)
         for (int j = 0; j <= n; j++)
         {
             auto &g = grid[i][j];
-            oldVelocities[i][j] = Vector2f(g.x, g.y);      //store old velocity
-            if (g.z > 0.0f){    //only if denominator is not 0
-            g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
-            g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
+            oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity
+            if (g.z > 0.0f)
+            {                                                  //only if denominator is not 0
+                g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
+                g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
             }
-
         }
     }
 
@@ -321,6 +359,8 @@ void update(real dt)
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
         p.F_e = p.F;
 
+        printf("p.fe: %lu\n", determinant(p.F));
+
         //update velocities
         Vec v_PIC(0, 0);
         Vec v_FLIP = p.v;
@@ -347,6 +387,7 @@ void update(real dt)
 
         //update particle velocities
         p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
+        // printf("P v: %d, %d\n", p.v[0], p.v[1]);
 
         //update particle positions
         p.x += p.v * dt;
