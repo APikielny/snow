@@ -162,7 +162,7 @@ void initialize()
                     //add mass to grid
 
                     grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
-                    printf("mass: %d\n", grid[curr_grid[0]][curr_grid[1]].z);
+                    printf("mass: %f\n", grid[curr_grid[0]][curr_grid[1]].z);
                 }
             }
         }
@@ -190,7 +190,7 @@ void initialize()
         }
         p.vol = particle_mass / density;
         // printf("mass, %f, density, %f\n", particle_mass, density);
-        // printf("volume: %lu\n", p.vol);
+        // printf("volume: %f\n", p.vol);
     }
 }
 
@@ -359,7 +359,7 @@ void update(real dt)
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
         p.F_e = p.F;
 
-        printf("p.fe: %lu\n", determinant(p.F));
+        printf("p.fe: %f\n", determinant(p.F));
 
         //update velocities
         Vec v_PIC(0, 0);
@@ -384,13 +384,16 @@ void update(real dt)
                 }
             }
         }
+        // printf("pic y: %f\n", v_PIC.y);
+        // printf("flip y: %f\n", v_FLIP.y);
 
         //update particle velocities
         p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
-        // printf("P v: %d, %d\n", p.v[0], p.v[1]);
+        printf("P v: %f, %f\n", p.v[0], p.v[1]);
 
         //update particle positions
         p.x += p.v * dt;
+        printf("dt: %f", dt);
     }
 }
 // Seed particles with position and color
