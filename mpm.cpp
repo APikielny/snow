@@ -77,13 +77,13 @@ real weight(real x)
     real abs_x = abs(x);
     // printf("abs x: %f\n", x);
     // if (abs_x < 1.f / n)
-    if (abs_x < 1.f / n)
+    if (abs_x < 1.f)
 
     {
         // printf("in return 1");
         return 0.5f * pow(abs_x, 3.0) - pow(abs_x, 2.0) + 2.0f / 3.0f;
     }
-    if (abs_x < 2.f / n)
+    if (abs_x < 2.f)
     {
         // printf("in return 2");
         return -1.0f / 6.0f * pow(abs_x, 3.0) + pow(abs_x, 2.0) - 2.0f * abs_x + 4.0f / 3.0f;
@@ -94,11 +94,11 @@ real weight(real x)
 real N_partial_derivative(real x)
 {
     real abs_x = abs(x);
-    if (abs_x < 1.f / n)
+    if (abs_x < 1.f)
     {
         return 1.5f * pow(abs_x, 2) - 2 * abs_x;
     }
-    if (abs_x < 2.f / n)
+    if (abs_x < 2.f)
     {
         return -0.5f * pow(abs_x, 2) + 2 * abs_x - 2;
     }
