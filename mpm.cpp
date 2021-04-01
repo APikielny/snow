@@ -75,12 +75,17 @@ struct Particle
 real weight(real x)
 {
     real abs_x = abs(x);
-    if (abs_x < 1.f / 80.f)
+    // printf("abs x: %f\n", x);
+    // if (abs_x < 1.f / n)
+    if (abs_x < 1.f / n)
+
     {
+        // printf("in return 1");
         return 0.5f * pow(abs_x, 3.0) - pow(abs_x, 2.0) + 2.0f / 3.0f;
     }
-    if (abs_x < 2.f / 80.f)
+    if (abs_x < 2.f / n)
     {
+        // printf("in return 2");
         return -1.0f / 6.0f * pow(abs_x, 3.0) + pow(abs_x, 2.0) - 2.0f * abs_x + 4.0f / 3.0f;
     }
     return 0;
@@ -159,10 +164,12 @@ void initialize()
                     //compute weight
 
                     real N = weight(fx[0]) * weight(fx[1]);
-                    //add mass to grid
 
+                    // printf("N: %f\n", N);
+
+                    //add mass to grid
                     grid[curr_grid[0]][curr_grid[1]].z += N * particle_mass;
-                    printf("mass: %f\n", grid[curr_grid[0]][curr_grid[1]].z);
+                    // printf("mass: %f\n", grid[curr_grid[0]][curr_grid[1]].z);
                 }
             }
         }
@@ -177,20 +184,25 @@ void initialize()
             for (int j = -2; j < 3; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
                 { //check bounds 0 to 80 in both dirs
                     //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                     //compute weight
+
                     real N = weight(fx[0]) * weight(fx[1]);
+
                     // h^3 = dx*dx*dx
-                    density += particle_mass * N / (dx * dx * dx);
+                    // h^2 for 2d
+                    // density is sum of grid masses multiplied by weight divided by vol/area of cell
+                    density += grid[curr_grid.x][curr_grid.y].z * N / (dx * dx);
+                    printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
                 }
             }
         }
         p.vol = particle_mass / density;
-        // printf("mass, %f, density, %f\n", particle_mass, density);
-        // printf("volume: %f\n", p.vol);
+        printf("mass, %f, density, %f\n", particle_mass, density);
+        printf("volume: %f\n", p.vol);
     }
 }
 
@@ -199,7 +211,7 @@ void update(real dt)
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
 
-    // For all grid nodes
+    // For all grid nodes: GRAVITY
     for (int i = 0; i <= n; i++)
     {
         for (int j = 0; j <= n; j++)
@@ -230,6 +242,7 @@ void update(real dt)
                     g[1] = std::max(0.0f, g[1]);
                 }
             }
+            g += dt * Vector3(0, -200, 0);
         }
     }
 
@@ -246,7 +259,7 @@ void update(real dt)
             for (int j = -2; j < 3; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
-                if (curr_grid.x >= 0 && curr_grid.x <= 80 && curr_grid.y >= 0 && curr_grid.y <= 80)
+                if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
                 { //check bounds 0 to 80 in both dirs
                     //p.x = [0,1], base_coord = [0,80], fx is distance from particle position to nearest grid coordinate
 
@@ -327,6 +340,7 @@ void update(real dt)
         {
             auto &g = grid[i][j];
             oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity
+            printf("old velocity: %f\n", oldVelocities[i][j].y);
             if (g.z > 0.0f)
             {                                                  //only if denominator is not 0
                 g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
@@ -359,7 +373,7 @@ void update(real dt)
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
         p.F_e = p.F;
 
-        printf("p.fe: %f\n", determinant(p.F));
+        // printf("p.fe: %f\n", determinant(p.F));
 
         //update velocities
         Vec v_PIC(0, 0);
@@ -384,16 +398,17 @@ void update(real dt)
                 }
             }
         }
-        // printf("pic y: %f\n", v_PIC.y);
-        // printf("flip y: %f\n", v_FLIP.y);
+        printf("pic y: %f\n", v_PIC.y);
+        printf("flip y: %f\n", v_FLIP.y);
 
         //update particle velocities
         p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
-        printf("P v: %f, %f\n", p.v[0], p.v[1]);
+        // printf("P v: %f, %f\n", p.v[0], p.v[1]);
 
         //update particle positions
         p.x += p.v * dt;
-        printf("dt: %f", dt);
+        // printf("dt: %f", dt);
+        p.x += Vector2f(0, -200.f) * dt;
     }
 }
 // Seed particles with position and color
