@@ -330,10 +330,10 @@ void update(real dt)
                     Mat F_hat_E_p = p.F_e;                 // equation 4 (x_hat = x_i)
                     Mat Re;
                     Mat Se;
-                    polar_decomp(p.F_e, Re, Se);
+                    polar_decomp(p.F_e, Re, Se); //TODO we don't use this?
                     Mat J_e = determinant(p.F_e);
                     Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
-                    real det_F_p = determinant(p.F_p);
+                    real det_F_p = determinant(p.F_p);                                                            //TODO F_p is never changed so this is always 0...
                     Mat stress;
                     if (det_F_p > 0.0f)
                     {
