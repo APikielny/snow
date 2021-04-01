@@ -344,8 +344,11 @@ void update(real dt)
                         stress = Mat(0.0f);
                     }
                     Vec N = weight_gradient(fx);
-                    forces[i][j] += V_p_n * multiply_vec_transpose(stress, N); // equation 6
+                    printf("curr coords, %d,%d", curr_grid.x, curr_grid.y);
                     Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
+                    printf("stress*n: %f, %f\n", multiply_vec_transpose(stress, N)[0], multiply_vec_transpose(stress, N)[1]);
+                    printf("Vpn: %f\n", V_p_n);
+                    printf("force: %f, %f\n", force_at_grid_by_particle[0], force_at_grid_by_particle[1]);
                     forces[curr_grid.x][curr_grid.y] += force_at_grid_by_particle;
                 }
             }
@@ -360,7 +363,7 @@ void update(real dt)
         {
             auto &g = grid[i][j];
             oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity
-            printf("old velocity: %f\n", oldVelocities[i][j].y);
+            // printf("old velocity: %f\n", oldVelocities[i][j].y);
             if (g.z > 0.0f)
             {                                                  //only if denominator is not 0
                 g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
@@ -398,6 +401,7 @@ void update(real dt)
         //update velocities
         Vec v_PIC(0, 0);
         Vec v_FLIP = p.v;
+        // printf("initial flip: %f\n", p.v[1]);
         for (int i = -2; i < 3; i++)
         {
             for (int j = -2; j < 3; j++)
@@ -418,8 +422,8 @@ void update(real dt)
                 }
             }
         }
-        printf("pic y: %f\n", v_PIC.y);
-        printf("flip y: %f\n", v_FLIP.y);
+        // printf("pic y: %f\n", v_PIC.y);
+        // printf("flip y: %f\n", v_FLIP.y);
 
         //update particle velocities
         p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
