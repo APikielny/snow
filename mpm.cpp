@@ -125,7 +125,9 @@ Vec weight_gradient(Vec pos)
 //output: m * v_transpose = shape(1,2)
 Vec multiply_vec_transpose(Mat m, Vec v)
 {
-    Vec vec(m[0][0] * v[0] + m[1][0] * v[0], m[0][1] * v[1] + m[1][1] * v[1]);
+    printf("in vec: %f,%f\n", v[0], v[1]);
+    printf("in mat: %f,%f, %f, %f\n", m[0][0], m[0][1], m[1][0], m[1][1]);
+    Vec vec = Vec(m[0][0] * v[0] + m[1][0] * v[0], m[0][1] * v[1] + m[1][1] * v[1]);
     return vec;
 }
 
