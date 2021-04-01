@@ -333,7 +333,16 @@ void update(real dt)
                     polar_decomp(p.F_e, Re, Se);
                     Mat J_e = determinant(p.F_e);
                     Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
-                    Mat stress = (1.0f / determinant(p.F_p) * delta_psi) * transposed(p.F_e);                     // above quation 6
+                    real det_F_p = determinant(p.F_p);
+                    Mat stress;
+                    if (det_F_p > 0.0f)
+                    {
+                        stress = (1.0f / det_F_p * delta_psi) * transposed(p.F_e); // above quation 6
+                    }
+                    else
+                    {
+                        stress = Mat(0.0f);
+                    }
                     Vec N = weight_gradient(fx);
                     forces[i][j] += V_p_n * multiply_vec_transpose(stress, N); // equation 6
                     Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
