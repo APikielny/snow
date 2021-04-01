@@ -407,8 +407,6 @@ void update(real dt)
 
         //update particle positions
         p.x += p.v * dt;
-        // printf("dt: %f", dt);
-        p.x += Vector2f(0, -200.f) * dt;
     }
 }
 // Seed particles with position and color
