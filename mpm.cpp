@@ -303,6 +303,13 @@ void update(real dt)
 
     //data structure to store grid forces
     Vector2f forces[n + 1][n + 1]; //same dimensions as grid
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            forces[i][j] = Vector2f(0.f, 0.f);
+        }
+    }
     //compute forces
     for (auto &p : particles)
     {
@@ -327,6 +334,8 @@ void update(real dt)
                     Mat stress = (1.0f / determinant(p.F_p) * delta_psi) * transposed(p.F_e);                     // above quation 6
                     Vec N = weight_gradient(fx);
                     forces[i][j] += V_p_n * multiply_vec_transpose(stress, N); // equation 6
+                    Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
+                    forces[curr_grid.x][curr_grid.y] += force_at_grid_by_particle;
                 }
             }
         }
