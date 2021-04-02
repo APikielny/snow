@@ -115,13 +115,6 @@ Vec weight_gradient(Vec pos)
     real N_y_real = weight(pos[0]) * N_partial_derivative(pos[1]);
     Vector2 vec(N_x_real, N_y_real);
     return vec;
-    // Matrix::field(1, 1);
-
-    // Vector1 N_x = Vector([N_x_real]);
-    // Matrix mat(N_x_real);
-    // Vector1 N_y = Vector([N_y_real]);
-    // Mat weight_gradient = Matrix.rows([ N_x, N_y ]);
-    // return weight_gradient;
 }
 
 //output: m * v_transpose = shape(1,2)
@@ -131,13 +124,6 @@ Vec multiply_vec_transpose(Mat m, Vec v)
     // printf("in mat: %f,%f, %f, %f\n", m[0][0], m[0][1], m[1][0], m[1][1]);
     Vec vec = Vec(m[0][0] * v[0] + m[1][0] * v[0], m[0][1] * v[1] + m[1][1] * v[1]);
     return vec;
-}
-
-Mat vec_times_vec_transpose(Vec v1, Vec v2)
-{
-    Vec row_1 = Vec(v1[0] * v2[0], v1[1] * v2[0]);
-    Vec row_2 = Vec(v1[0] * v2[1], v1[1] * v2[1]);
-    return Mat(row_1, row_2);
 }
 
 std::vector<Particle> particles;
@@ -393,7 +379,7 @@ void update(real dt)
                 { //check bounds 0 to n in both dirs
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                     Vec grid_velocity(grid[curr_grid.x][curr_grid.y].x, grid[curr_grid.x][curr_grid.y].y);
-                    v_p_n_plus_1 += vec_times_vec_transpose(grid_velocity, weight_gradient(fx)); //?? why does the paper tell us to take the transpose of a scalar
+                    v_p_n_plus_1 += Mat::outer_product(grid_velocity, weight_gradient(fx));
                 }
             }
         }
@@ -405,7 +391,7 @@ void update(real dt)
 
         // printf("p.fe: %f\n", determinant(p.F));
 
-        //update velocities
+        //update particle velocities
         Vec v_PIC(0, 0);
         Vec v_FLIP = p.v;
         // printf("initial flip: %f\n", p.v[1]);
