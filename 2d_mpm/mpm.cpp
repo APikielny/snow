@@ -1,5 +1,3 @@
-//  88-Line 2D Moving Least Squares Material Point Method (MLS-MPM)
-// [Explained Version by David Medina]
 
 // Uncomment this line for image exporting functionality
 #define TC_IMAGE_IO
@@ -43,6 +41,7 @@ const real lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu));
 
 //neighbor grid
 const int neighbor = 2;
+int iteration = 0;
 
 struct Particle
 {
@@ -68,7 +67,7 @@ struct Particle
                                              C(0),
                                              Jp(1),
                                              F_e(0),
-                                             F_p(0),
+                                             F_p(1),
                                              c(c) {}
 };
 
@@ -148,6 +147,8 @@ void initialize()
     //initialize particle weights and set mass of grid
     for (auto &p : particles)
     {
+        
+        
         // element-wise floor
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
@@ -331,9 +332,11 @@ void update(real dt)
                     Mat Re;
                     Mat Se;
                     polar_decomp(p.F_e, Re, Se); //TODO we don't use this?
-                    Mat J_e = determinant(p.F_e);
+                    real J_e = determinant(p.F_e);
+                    cout << "J_e" << J_e << endl;
                     Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
                     real det_F_p = determinant(p.F_p);                                                            //TODO F_p is never changed so this is always 0...
+                    cout << "delta psi " << delta_psi << endl;
                     Mat stress;
                     if (det_F_p > 0.0f)
                     {
@@ -441,6 +444,8 @@ void add_object(Vec center, int c)
     {
         particles.push_back(Particle((Vec::rand() * 2.0f - Vec(1)) * 0.08f + center, c));
     }
+    cout << "iteration: " << iteration << std::endl;
+    iteration++;
 }
 
 int main()
