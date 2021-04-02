@@ -18,7 +18,10 @@ using Mat = Matrix2;
 const int window_size = 800;
 
 // Grid resolution (cells)
-const int n = 160;
+const int n = 80;
+
+//number of particles per object
+const int num_particles = 1000.f;
 
 const real dt = 1e-4_f;
 const real frame_dt = 1e-3_f;
@@ -354,7 +357,7 @@ void update(real dt)
                 // Normalize by mass
                 // g /= g[2];
                 // Gravity
-                g += dt * Vector3(0, -2000, 0);
+                g += dt * Vector3(0, -200, 0);
 
                 // boundary thickness
                 real boundary = 0.05;
@@ -440,8 +443,8 @@ void update(real dt)
 // Seed particles with position and color
 void add_object(Vec center, int c)
 {
-    // Randomly sample 1000 particles in the square
-    for (int i = 0; i < 1000; i++)
+    // Randomly sample num_particles particles in the square
+    for (int i = 0; i < num_particles; i++)
     {
         particles.push_back(Particle((Vec::rand() * 2.0f - Vec(1)) * 0.08f + center, c));
     }
