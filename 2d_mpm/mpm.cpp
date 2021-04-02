@@ -21,7 +21,7 @@ const int window_size = 800;
 const int n = 80;
 
 //number of particles per object
-const int num_particles = 5000.f;
+const int num_particles = 10000.f;
 
 const real dt = 1e-4_f;
 const real frame_dt = 1e-3_f;
@@ -448,14 +448,62 @@ void add_object(Vec center, int c)
     }
 }
 
-int main()
+// from: https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
+std::vector<std::string>
+getNextLineAndSplitIntoTokens(std::istream &str)
 {
+    std::vector<std::string> result;
+    std::string line;
+    std::getline(str, line);
+
+    std::stringstream lineStream(line);
+    std::string cell;
+
+    while (std::getline(lineStream, cell, ','))
+    {
+        result.push_back(cell);
+    }
+    // This checks for a trailing comma with no data after it.
+    if (!lineStream && cell.empty())
+    {
+        // If there was a trailing comma then add an empty element.
+        result.push_back("");
+    }
+    return result;
+}
+
+void add_from_csv(char *infile_path, Vec center, int c)
+{
+    std::ifstream infile(infile_path);
+
+    std::vector<std::string> split_line = getNextLineAndSplitIntoTokens(infile);
+    split_line = getNextLineAndSplitIntoTokens(infile); //read two lines because first line is labels
+    while (split_line.size() > 1)
+    {
+        real x_pos = std::stof(split_line[0].c_str()) / 50.f;
+        real y_pos = std::stof(split_line[1].c_str()) / 50.f - 0.5f;                 //change to split_line[2] to get a bird's eye view cow :o
+        particles.push_back(Particle(Vec(x_pos + center[0], y_pos + center[1]), c)); //using x and y coordinates for 2d
+        split_line = getNextLineAndSplitIntoTokens(infile);
+    }
+}
+
+int main(int argc, char *argv[])
+{
+
     GUI gui("Real-time 2D MLS-MPM", window_size, window_size);
     auto &canvas = gui.get_canvas();
 
-    add_object(Vec(0.55, 0.45), 0xED553B);
-    add_object(Vec(0.45, 0.65), 0xF2B134);
-    add_object(Vec(0.55, 0.85), 0x068587);
+    if (argc == 1) //default
+    {
+        add_object(Vec(0.55, 0.45), 0xED553B);
+        add_object(Vec(0.45, 0.65), 0xF2B134);
+        add_object(Vec(0.55, 0.85), 0x068587);
+    }
+    else
+    {
+        assert(argc == 2);
+        add_from_csv(argv[1], Vec(0.55, 0.85), 0xF2B134);
+    }
 
     int frame = 0;
 
