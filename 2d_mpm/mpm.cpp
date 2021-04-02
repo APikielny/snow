@@ -30,7 +30,7 @@ const real alpha = 0.95;
 // Snow material properties
 const auto particle_mass = 1.0_f;
 const auto vol = 1.0_f;        // Particle Volume
-const auto hardening = 10.0_f; // Snow hardening factor
+const auto xi = 10.0_f; // Snow hardening factor
 const auto E = 1e4_f;          // Young's Modulus
 const auto nu = 0.2_f;         // Poisson ratio
 const bool plastic = true;
@@ -66,7 +66,7 @@ struct Particle
                                              F(1),
                                              C(0),
                                              Jp(1),
-                                             F_e(0),
+                                             F_e(1),
                                              F_p(1),
                                              c(c) {}
 };
@@ -124,8 +124,8 @@ Vec weight_gradient(Vec pos)
 //output: m * v_transpose = shape(1,2)
 Vec multiply_vec_transpose(Mat m, Vec v)
 {
-    printf("in vec: %f,%f\n", v[0], v[1]);
-    printf("in mat: %f,%f, %f, %f\n", m[0][0], m[0][1], m[1][0], m[1][1]);
+    // printf("in vec: %f,%f\n", v[0], v[1]);
+    // printf("in mat: %f,%f, %f, %f\n", m[0][0], m[0][1], m[1][0], m[1][1]);
     Vec vec = Vec(m[0][0] * v[0] + m[1][0] * v[0], m[0][1] * v[1] + m[1][1] * v[1]);
     return vec;
 }
@@ -199,13 +199,13 @@ void initialize()
                     // h^2 for 2d
                     // density is sum of grid masses multiplied by weight divided by vol/area of cell
                     density += grid[curr_grid.x][curr_grid.y].z * N / (dx * dx);
-                    printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
+                    // printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
                 }
             }
         }
         p.vol = particle_mass / density;
-        printf("mass, %f, density, %f\n", particle_mass, density);
-        printf("volume: %f\n", p.vol);
+        // printf("mass, %f, density, %f\n", particle_mass, density);
+        // printf("volume: %f\n", p.vol);
     }
 }
 
@@ -213,41 +213,6 @@ void update(real dt)
 {
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
-
-    // For all grid nodes: GRAVITY
-    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j <= n; j++)
-        {
-            auto &g = grid[i][j];
-            // No need for epsilon here
-            if (g[2] > 0)
-            {
-                // Normalize by mass
-                g /= g[2];
-                // Gravity
-                g += dt * Vector3(0, -200, 0);
-
-                // boundary thickness
-                real boundary = 0.05;
-                // Node coordinates
-                real x = (real)i / n;
-                real y = real(j) / n;
-
-                // Sticky boundary
-                if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-                {
-                    g = Vector3(0);
-                }
-                // Separate boundary
-                if (y < boundary)
-                {
-                    g[1] = std::max(0.0f, g[1]);
-                }
-            }
-            g += dt * Vector3(0, -200, 0);
-        }
-    }
 
     for (auto &p : particles)
     {
@@ -329,29 +294,31 @@ void update(real dt)
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                     real V_p_n = determinant(p.F) * p.vol; //page 6
                     Mat F_hat_E_p = p.F_e;                 // equation 4 (x_hat = x_i)
+                    
                     Mat Re;
                     Mat Se;
-                    polar_decomp(p.F_e, Re, Se); //TODO we don't use this?
+                    polar_decomp(p.F_e, Re, Se); 
+
                     real J_e = determinant(p.F_e);
-                    cout << "J_e" << J_e << endl;
-                    Mat delta_psi = 2 * mu_0 * (p.F_e) + lambda_0 * (J_e - 1) * J_e * transposed(inverse(p.F_e)); //from tech report
-                    real det_F_p = determinant(p.F_p);                                                            //TODO F_p is never changed so this is always 0...
-                    cout << "delta psi " << delta_psi << endl;
+                    real J = determinant(p.F);
+                    real J_p = determinant(p.F_p);
                     Mat stress;
-                    if (det_F_p > 0.0f)
+                    if (J != 0.0f)
                     {
-                        stress = (1.0f / det_F_p * delta_psi) * transposed(p.F_e); // above quation 6
+                        real mu = mu_0*exp(xi*(1-J_p));
+                        real lambda = lambda_0*exp(xi*(1-J_p));
+                        stress = ((2.0f*mu)/J)*(p.F_e - Re)*transposed(p.F_e) + (lambda* 1.0f/J) * (J_e-1)*(J_e*Mat(1)); // above quation 6
                     }
-                    else
-                    {
+                    else {
                         stress = Mat(0.0f);
                     }
+
                     Vec N = weight_gradient(fx);
-                    printf("curr coords, %d,%d", curr_grid.x, curr_grid.y);
+                    // printf("curr coords, %d,%d", curr_grid.x, curr_grid.y);
                     Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
-                    printf("stress*n: %f, %f\n", multiply_vec_transpose(stress, N)[0], multiply_vec_transpose(stress, N)[1]);
-                    printf("Vpn: %f\n", V_p_n);
-                    printf("force: %f, %f\n", force_at_grid_by_particle[0], force_at_grid_by_particle[1]);
+                    // printf("stress*n: %f, %f\n", multiply_vec_transpose(stress, N)[0], multiply_vec_transpose(stress, N)[1]);
+                    // printf("Vpn: %f\n", V_p_n);
+                    // printf("force: %f, %f\n", force_at_grid_by_particle[0], force_at_grid_by_particle[1]);
                     forces[curr_grid.x][curr_grid.y] += force_at_grid_by_particle;
                 }
             }
@@ -371,6 +338,40 @@ void update(real dt)
             {                                                  //only if denominator is not 0
                 g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
                 g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
+            }
+        }
+    }
+
+        // For all grid nodes: GRAVITY
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            auto &g = grid[i][j];
+            // No need for epsilon here
+            if (g[2] > 0)
+            {
+                // Normalize by mass
+                // g /= g[2];
+                // Gravity
+                g += dt * Vector3(0, -2000, 0);
+
+                // boundary thickness
+                real boundary = 0.05;
+                // Node coordinates
+                real x = (real)i / n;
+                real y = real(j) / n;
+
+                // Sticky boundary
+                if (x < boundary || x > 1 - boundary || y > 1 - boundary)
+                {
+                    g = Vector3(0);
+                }
+                // Separate boundary
+                if (y < boundary)
+                {
+                    g[1] = std::max(0.0f, g[1]);
+                }
             }
         }
     }
@@ -444,8 +445,6 @@ void add_object(Vec center, int c)
     {
         particles.push_back(Particle((Vec::rand() * 2.0f - Vec(1)) * 0.08f + center, c));
     }
-    cout << "iteration: " << iteration << std::endl;
-    iteration++;
 }
 
 int main()
