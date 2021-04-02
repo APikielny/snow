@@ -21,7 +21,7 @@ const int window_size = 800;
 const int n = 80;
 
 //number of particles per object
-const int num_particles = 1000.f;
+const int num_particles = 5000.f;
 
 const real dt = 1e-4_f;
 const real frame_dt = 1e-3_f;
@@ -199,6 +199,24 @@ void initialize()
 
 void update(real dt)
 {
+
+    //store old grid velocities
+    Vector2f oldVelocities[n + 1][n + 1];
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            auto &g = grid[i][j];
+            oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity
+            // printf("old velocity: %f\n", oldVelocities[i][j].y);
+            // if (g.z > 0.0f)
+            // {                                                  //only if denominator is not 0
+            //     g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
+            //     g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
+            // }
+        }
+    }
+
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
 
@@ -307,26 +325,13 @@ void update(real dt)
                     Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
                     // printf("stress*n: %f, %f\n", multiply_vec_transpose(stress, N)[0], multiply_vec_transpose(stress, N)[1]);
                     // printf("Vpn: %f\n", V_p_n);
-                    // printf("force: %f, %f\n", force_at_grid_by_particle[0], force_at_grid_by_particle[1]);
+                    real epsilon = 1e-4f;
+                    // if (abs(force_at_grid_by_particle[1]) > epsilon)
+                    // {
+                    //     printf("force: %f, %f\n", force_at_grid_by_particle[0], force_at_grid_by_particle[1]);
+                    // }
                     forces[curr_grid.x][curr_grid.y] += force_at_grid_by_particle;
                 }
-            }
-        }
-    }
-
-    //store old grid velocities
-    Vector2f oldVelocities[n + 1][n + 1];
-    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j <= n; j++)
-        {
-            auto &g = grid[i][j];
-            oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity
-            // printf("old velocity: %f\n", oldVelocities[i][j].y);
-            if (g.z > 0.0f)
-            {                                                  //only if denominator is not 0
-                g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
-                g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
             }
         }
     }
@@ -415,8 +420,15 @@ void update(real dt)
                 }
             }
         }
-        // printf("pic y: %f\n", v_PIC.y);
-        // printf("flip y: %f\n", v_FLIP.y);
+        real epsilon = 1e-4;
+        // if (abs(v_PIC.y) > epsilon)
+        // {
+        //     printf("pic y: %f\n", v_PIC.y);
+        // }
+        // if (abs(v_FLIP.y) > epsilon)
+        // {
+        //     printf("flip y: %f\n", v_FLIP.y);
+        // }
 
         //update particle velocities
         p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
