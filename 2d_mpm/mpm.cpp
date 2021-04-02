@@ -394,6 +394,24 @@ void update(real dt)
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
         p.F_e = p.F;
 
+        //plastic component - compiles but is does not change sim.
+        Mat F_hat_P_p = p.F_p;  // Section 7
+        Mat U_p, Sig_hat_p, V_transpose_p; 
+        svd(p.F_e,U_p,Sig_hat_p,V_transpose_p); //compute singular value decomposition
+        real ten = 10;
+        real theta_c = 2.5f * pow(ten,-2.0); //move up later
+        real theta_s = 7.5 * pow(ten, -3.0);
+
+        Mat Sig_p;
+        Sig_p = Sig_hat_p;
+        Sig_p[0][0] = clamp(Sig_p[0][0], 1-theta_c, 1+theta_s);//clamp 
+        Sig_p[1][1] = clamp(Sig_p[1][1], 1-theta_c, 1+theta_s);
+    
+        p.F_e = U_p * Sig_p *V_transpose_p;
+        p.F_p = transposed(V_transpose_p) * inversed(Sig_p)*transposed(U_p)*p.F; // 
+        //assert(p.F = p.F_e *p.F_p); // 
+
+
         // printf("p.fe: %f\n", determinant(p.F));
 
         //update particle velocities
