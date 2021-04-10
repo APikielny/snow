@@ -21,7 +21,7 @@ const int window_size = 800;
 const int n = 80;
 
 //number of particles per object
-const int num_particles = 10000.f;
+const int num_particles = 1000.f;
 
 const real dt = 1e-4_f;
 const real frame_dt = 1e-3_f;
@@ -311,6 +311,7 @@ void update(real dt)
                     Mat stress;
                     if (J != 0.0f)
                     {
+                        // printf("line 315");
                         real mu = mu_0 * exp(xi * (1 - J_p));
                         real lambda = lambda_0 * exp(xi * (1 - J_p));
                         stress = ((2.0f * mu) / J) * (p.F_e - Re) * transposed(p.F_e) + (lambda * 1.0f / J) * (J_e - 1) * (J_e * Mat(1)); // above quation 6
@@ -350,12 +351,35 @@ void update(real dt)
                 // Gravity
                 g += dt * Vector3(0, -200, 0);
 
+//copied from taichi example
                 // boundary thickness
                 real boundary = 0.05;
                 // Node coordinates
                 real x = (real)i / n;
                 real y = real(j) / n;
 
+                //added a sphere collider (hemisphere)
+                Vec circleCenter = Vec(0.5, 0+boundary);
+                real circleRadius = 0.1;
+                real mu = 0.1;
+
+                //if inside the sphere...
+                if((x-circleCenter.x)*(x-circleCenter.x) + (y-circleCenter.y)*(y-circleCenter.y)< circleRadius*circleRadius){
+                    Vec n = normalized(Vec(x, y) - circleCenter);
+                    Vec v = Vec(g.x, g.y);
+                    real v_dot_n = v.dot(n);
+                    if(v_dot_n < 0){    //section 8 body collision
+                        Vec v_t = v-n*v_dot_n;
+                        real v_t_norm = pow(v_t.dot(v_t), 0.5);
+                        if (v_t_norm > 0){
+                            Vec v_prime = v_t + mu*v_dot_n*v_t / v_t_norm;
+                            g.x = v_prime.x;
+                            g.y = v_prime.y;
+                        }
+
+                    }
+
+                }
                 // Sticky boundary
                 if (x < boundary || x > 1 - boundary || y > 1 - boundary)
                 {
@@ -367,6 +391,7 @@ void update(real dt)
                     g[1] = std::max(0.0f, g[1]);
                 }
             }
+//copy end
         }
     }
 
@@ -390,9 +415,11 @@ void update(real dt)
         }
 
         //update force
+        
         p.F = (Mat(1) + dt * v_p_n_plus_1) * p.F; //equation in step 7, is Mat(1) the identity?
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
-        p.F_e = p.F;
+        p.F_e = (Mat(1) + dt * v_p_n_plus_1) * p.F_e;
+        // printf("p.fe Before: %f\n", determinant(p.F_e));
 
         //plastic component - compiles but is does not change sim.
         Mat F_hat_P_p = p.F_p;  // Section 7
@@ -400,16 +427,22 @@ void update(real dt)
         svd(p.F_e,U_p,Sig_hat_p,V_transpose_p); //compute singular value decomposition
         real ten = 10;
         real theta_c = 2.5f * pow(ten,-2.0); //move up later
-        real theta_s = 7.5 * pow(ten, -3.0);
+        real theta_s = 7.5f * pow(ten, -3.0);
 
         Mat Sig_p;
         Sig_p = Sig_hat_p;
+    //    std::cout<<"409: " <<(Sig_p)<<std::endl;
+
         Sig_p[0][0] = clamp(Sig_p[0][0], 1-theta_c, 1+theta_s);//clamp 
         Sig_p[1][1] = clamp(Sig_p[1][1], 1-theta_c, 1+theta_s);
-    
+        
+        // std::cout<<"414: "<<(Sig_p)<<std::endl;
         p.F_e = U_p * Sig_p *V_transpose_p;
         p.F_p = transposed(V_transpose_p) * inversed(Sig_p)*transposed(U_p)*p.F; // 
-        //assert(p.F = p.F_e *p.F_p); // 
+        p.F = p.F_e * p.F_p;
+        // printf("p.fe After: %f\n", determinant(p.F_e));
+        // printf("p.fp After: %f\n", determinant(p.F_p));
+
 
 
         // printf("p.fe: %f\n", determinant(p.F));
@@ -513,9 +546,9 @@ int main(int argc, char *argv[])
 
     if (argc == 1) //default
     {
-        add_object(Vec(0.55, 0.45), 0xED553B);
-        add_object(Vec(0.45, 0.65), 0xF2B134);
-        add_object(Vec(0.55, 0.85), 0x068587);
+        add_object(Vec(0.55, 0.45), 0xFFFAFA);
+        add_object(Vec(0.45, 0.65), 0xFFFAFA);
+        add_object(Vec(0.55, 0.85), 0xFFFAFA);
     }
     else
     {
