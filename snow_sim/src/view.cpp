@@ -172,6 +172,9 @@ void View::keyReleaseEvent(QKeyEvent *event)
     else if(event->key() == Qt::Key_E) {
         m_vertical -= 1;
     }
+    else if(event->key() == Qt::Key_T) {
+        m_sim.update(1e-4f);
+    }
 }
 
 void View::tick()
