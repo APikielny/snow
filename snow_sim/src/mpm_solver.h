@@ -8,8 +8,8 @@
 using namespace Eigen;
 using namespace std;
 
-using Vec = Vector2d;
-using Mat = Matrix2d;
+using Vec = Vector3d;
+using Mat = Matrix3d;
 
 
 
@@ -31,14 +31,14 @@ struct Particle
     int c;
 
 
-    Particle(Vec x, int c, Vec v = Vec(0, 0)) : x(x),
+    Particle(Vec x, int c, Vec v = Vec(0, 0, 0)) : x(x),
                                              v(v),
                                              vol(0),
-                                             F(Matrix2d::Identity(2, 2)),
-                                             C(Matrix2d::Zero(2, 2)),
+                                             F(Matrix3d::Identity(3, 3)),
+                                             C(Matrix3d::Zero(3, 3)),
                                              Jp(1),
-                                             F_e(Matrix2d::Identity(2, 2)),
-                                             F_p(Matrix2d::Identity(2, 2)),
+                                             F_e(Matrix3d::Identity(3, 3)),
+                                             F_p(Matrix3d::Identity(3, 3)),
                                              c(c) {}
 };
 
@@ -64,7 +64,7 @@ private:
     const static int n = 80;
 
     //number of particles per object
-    const int num_particles = 1000.f;
+    const int num_particles = 10.f;
 
     const double dt = 1e-4f;
     const double frame_dt = 1e-3f;
@@ -92,10 +92,11 @@ private:
 
 
     // Vector3: [velocity_x, velocity_y, mass]
-    Vector3d grid[n + 1][n + 1];
+    Vector3d grid[n + 1][n + 1][n + 1];
 
 
     void add_object(Vec center, int c);
+    void add_from_csv(char *infile_path, Vec center, int c);
 };
 
 #endif // MPM_SOLVER_H
