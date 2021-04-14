@@ -130,4 +130,4 @@ dmypy.json
 
 .DS_Store
 .vscode/
-build-simulation-Desktop_Qt_5_14_2_clang_64bit-Debug/.qmake.stash
+build-simulation-Desktop_Qt_5_14_2_clang_64bit-Debug/*
