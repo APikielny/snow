@@ -81,11 +81,6 @@ mpm_solver::mpm_solver()
 
 void mpm_solver::initialize()
 {
-    Mat m;
-    m << 1, 2, 3, 4;
-    Mat R, S;
-    polar_decomp(m, R, S);
-
 
     //create shapes
     add_object(Vec(0.55, 0.45), 0xFFFAFA);
@@ -195,13 +190,13 @@ void mpm_solver::update(double dt)
 {
 
     //store old grid velocities
-    Vector2f oldVelocities[n + 1][n + 1];
+    Vec oldVelocities[n + 1][n + 1];
     for (int i = 0; i <= n; i++)
     {
         for (int j = 0; j <= n; j++)
         {
             auto &g = grid[i][j];
-            oldVelocities[i][j] = Vector2f(g.x(), g.y()); //store old velocity
+            oldVelocities[i][j] = Vec(g.x(), g.y()); //store old velocity
         }
     }
 
