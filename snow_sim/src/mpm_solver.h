@@ -61,7 +61,7 @@ private:
     const int window_size = 800;
 
     // Grid resolution (cells)
-    const static int n = 80;
+    const static int n = 40;
 
     //number of particles per object
     const int num_particles = 10.f;
@@ -92,7 +92,9 @@ private:
 
 
     // Vector3: [velocity_x, velocity_y, mass]
-    Vector3d grid[n + 1][n + 1][n + 1];
+//    Vector3d grid[n + 1][n + 1][n + 1];
+    Vector4d grid[n + 1][n + 1][n + 1];
+
 
 
     void add_object(Vec center, int c);
