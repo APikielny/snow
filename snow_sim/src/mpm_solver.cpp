@@ -87,8 +87,8 @@ void mpm_solver::initialize()
 
     //create shapes
     add_object(Vec(0.55, 0.45, 0.f), 0xFFFAFA);
-    add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
-    add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
+//    add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
+//    add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
 
     //initialize particle weights and set mass of grid
     for (auto &p : particles)
@@ -148,7 +148,7 @@ void mpm_solver::initialize()
                         // h^3 = dx*dx*dx
                         // h^2 for 2d
                         // density is sum of grid masses multiplied by weight divided by vol/area of cell
-                        density += grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].z() * N / (dx * dx * dx);
+                        density += grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].w() * N / (dx * dx * dx);
                         // printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
                     }
                 }
@@ -240,15 +240,7 @@ void mpm_solver::update(double dt)
 
                         double N = weight(fx[0]) * weight(fx[1]) * weight(fx[2]);
 
-//                        if (fx[0] < 2.0f) {
-//                            int h = 5;
-//                        }
-//                        if (fx[1] < 2.0f) {
-//                            int h = 5;
-//                        }
-
                         //add mass to grid
-
                         grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w() += N * particle_mass;    //changed to w
                     }
                 }
@@ -373,7 +365,7 @@ void mpm_solver::update(double dt)
                     // Normalize by mass
                     // g /= g[2];
                     // Gravity
-                    g += dt * Vector4d(0, -200, 0,0);   //not sure
+                    g += dt * Vector4d(0, -20000, 0,0);   //not sure
 
                     //copied from taichi example
                     // boundary thickness
@@ -389,7 +381,7 @@ void mpm_solver::update(double dt)
                     double mu = 0.1;
 
                     //if inside the sphere...
-                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y())+ (z - circleCenter.z()) * (z - circleCenter.z()) < circleRadius * circleRadius)
+                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()))//+ (z - circleCenter.z()) * (z - circleCenter.z()) < circleRadius * circleRadius)
                     {
                         Vec n = (Vec(x, y, z) - circleCenter).normalized();
                         Vec v = Vec(g.x(), g.y(), g.z());
@@ -560,7 +552,7 @@ void mpm_solver::add_object(Vec center, int c)
     // Randomly sample num_particles particles in the square
     for (int i = 0; i < num_particles; i++)
     {
-        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, rand()/(float)RAND_MAX) * 2.0f - Vec(1, 1, 1)) * 0.08 + center, c));
+        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, rand()/(float)RAND_MAX) * 2.0f - Vec(1, 1, 0)) * 0.08 + center, c));
 
     }
 }
@@ -619,8 +611,8 @@ int mpm_solver::run(int argc, char* argv[])
     if (argc == 1) //default
     {
         add_object(Vec(0.55, 0.45, 0.f), 0xFFFAFA);
-        add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
-        add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
+//        add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
+//        add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
     }
     else
     {
@@ -637,7 +629,7 @@ int mpm_solver::run(int argc, char* argv[])
     for (int step = 0;; step++)
     {
         // Advance simulation
-        update(dt);
+//        update(dt);
 
         // Visualize frame
         if (step % int(frame_dt / dt) == 0)
