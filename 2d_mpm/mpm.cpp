@@ -337,6 +337,19 @@ void update(real dt)
         }
     }
 
+    //Step 4
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            if (grid[i][j][2] > 0.f)
+            {
+                grid[i][j][0] += forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
+                grid[i][j][1] += forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
+            }
+        }
+    }
+
     // For all grid nodes: GRAVITY
     for (int i = 0; i <= n; i++)
     {

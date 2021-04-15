@@ -353,11 +353,28 @@ void mpm_solver::update(double dt)
                         // }
                         forces[curr_grid.x()][curr_grid.y()][curr_grid.z()] += force_at_grid_by_particle;
                     }
-            }
+                }
             }
         }
     }
 //    std::cout << "compute forces\n" << std::endl;
+
+    //Step 4
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            for (int k = 0; k <= n; k++)
+            {
+                if (grid[i][j][k].w() > 0.f)
+                {
+                    grid[i][j][k].x() += forces[i][j][k].x() * (1.0f / grid[i][j][k].w()) * dt;
+                    grid[i][j][k].y() += forces[i][j][k].y() * (1.0f / grid[i][j][k].w()) * dt;
+                    grid[i][j][k].z() += forces[i][j][k].z() * (1.0f / grid[i][j][k].w()) * dt;
+                }
+            }
+        }
+    }
 
 
     // For all grid nodes: GRAVITY
@@ -368,7 +385,7 @@ void mpm_solver::update(double dt)
             for (int k = 0; k <= n; k++)
             {
                 auto &g = grid[i][j][k];
-                auto &f = forces[i][j][k];
+//                auto &f = forces[i][j][k];
                 // No need for epsilon here
                 if (g[3] > 0)   //changed to w
                 {
@@ -388,7 +405,7 @@ void mpm_solver::update(double dt)
                     // Normalize by mass
                     // g /= g[2];
                     // Gravity
-                    g += dt * Vector4d(0, -20000*g[3], 0,0);   //not sure
+                    g += dt * Vector4d(0, -20000, 0,0);   //not sure
 
                     //copied from taichi example
                     // boundary thickness
@@ -575,7 +592,7 @@ void mpm_solver::add_object(Vec center, int c)
     // Randomly sample num_particles particles in the square
     for (int i = 0; i < num_particles; i++)
     {
-        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, 0) * 2.0f - Vec(1, 1, 0)) * 0.08 + center, c));
+        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, 0, 0) * 2.0f - Vec(1, 1, 0)) * 0.08 + center, c));
 
     }
 }
