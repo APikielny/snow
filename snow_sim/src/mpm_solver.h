@@ -50,6 +50,8 @@ public:
     void update(double dt);
     int run(int argc, char* argv[]);
     void draw(Shader *shader);
+    void add_from_csv(char *infile_path, Vec center, int c);
+
 
     std::vector<Particle> particles;
 
@@ -64,7 +66,7 @@ private:
     const static int n = 40;
 
     //number of particles per object
-    const int num_particles = 10.f;
+    const int num_particles = 50.f;
 
     const double dt = 1e-4f;
     const double frame_dt = 1e-3f;
@@ -98,7 +100,6 @@ private:
 
 
     void add_object(Vec center, int c);
-    void add_from_csv(char *infile_path, Vec center, int c);
 };
 
 #endif // MPM_SOLVER_H

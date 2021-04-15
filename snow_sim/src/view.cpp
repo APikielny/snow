@@ -48,6 +48,7 @@ void View::initializeGL()
     glClearColor(240.0f/255.0f, 248.0f/255.0f, 255.0f/255.0f, 1);
 
     m_shader = new Shader(":/shaders/shader.vert", ":/shaders/shader.frag");
+//    m_sim.add_from_csv("/Users/Adam/Desktop/cs2240/snow/csv/sparse_cow.csv", Vec(0.55, 0.85, 0.f), 0xF2B134);
     m_sim.initialize();
 
     m_camera.setPosition(Eigen::Vector3f(2, 2, -7));

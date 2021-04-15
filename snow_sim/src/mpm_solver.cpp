@@ -72,6 +72,12 @@ static void polar_decomp(const Mat m, Mat& R, Mat& S){
 //        R(1, 1) = c;
 //        S = R.transpose() * m;
 
+    //see relation of SVD to polar decomp: https://en.wikipedia.org/wiki/Polar_decomposition
+    JacobiSVD<MatrixXd> svd(m, ComputeThinU | ComputeThinV); //compute singular value decomposition
+    Matrix3d singular_value_matrix;
+    singular_value_matrix.diagonal()<<svd.singularValues()[0], svd.singularValues()[1], svd.singularValues()[2];
+    R = svd.matrixV() * singular_value_matrix * svd.matrixV().transpose();
+    S = svd.matrixU() * svd.matrixV().transpose();
 
 }
 
@@ -362,13 +368,27 @@ void mpm_solver::update(double dt)
             for (int k = 0; k <= n; k++)
             {
                 auto &g = grid[i][j][k];
+                auto &f = forces[i][j][k];
                 // No need for epsilon here
                 if (g[3] > 0)   //changed to w
                 {
+
+//                    /////gravity with momentum with conservation
+//                    float mass_inverse = 1.0f/ g[3];
+//                    g[0]*=mass_inverse;
+//                    g[1]*=mass_inverse;
+//                    g[1]*=mass_inverse;
+
+
+
+
+                    ///
+
+
                     // Normalize by mass
                     // g /= g[2];
                     // Gravity
-                    g += dt * Vector4d(0, -20000, 0,0);   //not sure
+                    g += dt * Vector4d(0, -20000*g[3], 0,0);   //not sure
 
                     //copied from taichi example
                     // boundary thickness
@@ -383,36 +403,36 @@ void mpm_solver::update(double dt)
                     double circleRadius = 0.1;
                     double mu = 0.1;
 
-                    //if inside the sphere...
-                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()))//+ (z - circleCenter.z()) * (z - circleCenter.z()) < circleRadius * circleRadius)
-                    {
-                        Vec n = (Vec(x, y, z) - circleCenter).normalized();
-                        Vec v = Vec(g.x(), g.y(), g.z());
-                        double v_dot_n = v.dot(n);
-                        if (v_dot_n < 0)
-                        { //section 8 body collision
-                            Vec v_t = v - n * v_dot_n;
-                            double v_t_norm = pow(v_t.dot(v_t), 0.5);
-                            if (v_t_norm > 0)
-                            {
-                                Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
-                                g.x() = v_prime.x();
-                                g.y() = v_prime.y();
-                                g.z() = v_prime.z();
+//                    //if inside the sphere...
+//                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()))//+ (z - circleCenter.z()) * (z - circleCenter.z()) < circleRadius * circleRadius)
+//                    {
+//                        Vec n = (Vec(x, y, z) - circleCenter).normalized();
+//                        Vec v = Vec(g.x(), g.y(), g.z());
+//                        double v_dot_n = v.dot(n);
+//                        if (v_dot_n < 0)
+//                        { //section 8 body collision
+//                            Vec v_t = v - n * v_dot_n;
+//                            double v_t_norm = pow(v_t.dot(v_t), 0.5);
+//                            if (v_t_norm > 0)
+//                            {
+//                                Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
+//                                g.x() = v_prime.x();
+//                                g.y() = v_prime.y();
+//                                g.z() = v_prime.z();
 
-                            }
-                        }
-                    }
+//                            }
+//                        }
+//                    }
                     // Sticky boundary
-                    if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-                    {
-                        g = Vector4d(0);
-                    }
-                    // Separate boundary
-                    if (y < boundary)
-                    {
-                        g[1] = std::max(0.0, g[1]);
-                    }
+//                    if (x < boundary || x > 1 - boundary || y > 1 - boundary)
+//                    {
+//                        g = Vector4d(0);
+//                    }
+//                    // Separate boundary
+//                    if (y < boundary)
+//                    {
+//                        g[1] = std::max(0.0, g[1]);
+//                    }
                 }
             }
         }
@@ -443,44 +463,44 @@ void mpm_solver::update(double dt)
             }
         }
 
-        //update force
+//        //update force
 
         p.F = (Mat(MatrixXd::Identity(3, 3)) + dt * v_p_n_plus_1) * p.F; //equation in step 7, is Mat(1) the identity?
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
         p.F_e = (Mat(MatrixXd::Identity(3, 3)) + dt * v_p_n_plus_1) * p.F_e;
         // printf("p.fe Before: %f\n", determinant(p.F_e));
 
-        //plastic component - compiles but is does not change sim.
-        Mat F_hat_P_p = p.F_p; // Section 7
+//        //plastic component - compiles but is does not change sim.
+//        Mat F_hat_P_p = p.F_p; // Section 7
 
-        JacobiSVD<MatrixXd> svd(p.F_e, ComputeThinU | ComputeThinV); //compute singular value decomposition
-        Mat U_p = -1.0*svd.matrixU();
-        Mat Sig_hat_p = svd.singularValues().asDiagonal();
-        Sig_hat_p.col(1)[1] = -1.0*Sig_hat_p.col(1)[1];
-        Mat V_transpose_p = svd.matrixV().transpose();
-        V_transpose_p.col(0) = -1.0*V_transpose_p.col(0);
+//        JacobiSVD<MatrixXd> svd(p.F_e, ComputeThinU | ComputeThinV); //compute singular value decomposition
+//        Mat U_p = -1.0*svd.matrixU();
+//        Mat Sig_hat_p = svd.singularValues().asDiagonal();
+//        Sig_hat_p.col(1)[1] = -1.0*Sig_hat_p.col(1)[1];
+//        Mat V_transpose_p = svd.matrixV().transpose();
+//        V_transpose_p.col(0) = -1.0*V_transpose_p.col(0);
 
-//        //ERROR CHECKING SVD - https://stackoverflow.com/questions/34392115/eigen-jacobi-svd
-//        MatrixXd Cp = U_p * Sig_hat_p * V_transpose_p;
-//        MatrixXd diff = Cp - p.F_e;
-//        cout << "ERROR CHECKING SVD: " << diff.array().abs().sum() << "\n";
-
-
-        double theta_c = 2.5f * pow(10, -2.0); //move up later
-        double theta_s = 7.5f * pow(10, -3.0);
+////        //ERROR CHECKING SVD - https://stackoverflow.com/questions/34392115/eigen-jacobi-svd
+////        MatrixXd Cp = U_p * Sig_hat_p * V_transpose_p;
+////        MatrixXd diff = Cp - p.F_e;
+////        cout << "ERROR CHECKING SVD: " << diff.array().abs().sum() << "\n";
 
 
-        Mat Sig_p;
-        Sig_p = Sig_hat_p;
-        //    std::cout<<"409: " <<(Sig_p)<<std::endl;
+//        double theta_c = 2.5f * pow(10, -2.0); //move up later
+//        double theta_s = 7.5f * pow(10, -3.0);
+
+
+//        Mat Sig_p;
+//        Sig_p = Sig_hat_p;
+//        //    std::cout<<"409: " <<(Sig_p)<<std::endl;
 
 //        Sig_p[0][0] = clamp(Sig_p[0][0], 1 - theta_c, 1 + theta_s); //clamp
 //        Sig_p[1][1] = clamp(Sig_p[1][1], 1 - theta_c, 1 + theta_s);
 
         // std::cout<<"414: "<<(Sig_p)<<std::endl;
-        p.F_e = U_p * Sig_p * V_transpose_p;
-        p.F_p = V_transpose_p.transpose() * Sig_p.inverse() * U_p.transpose() * p.F; //
-        p.F = p.F_e * p.F_p;
+//        p.F_e = U_p * Sig_p * V_transpose_p;
+//        p.F_p = V_transpose_p.transpose() * Sig_p.inverse() * U_p.transpose() * p.F; //
+//        p.F = p.F_e * p.F_p;
 
 
         //update particle velocities
@@ -555,7 +575,7 @@ void mpm_solver::add_object(Vec center, int c)
     // Randomly sample num_particles particles in the square
     for (int i = 0; i < num_particles; i++)
     {
-        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, rand()/(float)RAND_MAX) * 2.0f - Vec(1, 1, 0)) * 0.08 + center, c));
+        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, 0) * 2.0f - Vec(1, 1, 0)) * 0.08 + center, c));
 
     }
 }
