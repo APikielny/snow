@@ -118,7 +118,7 @@ void mpm_solver::initialize()
                         // printf("N: %f\n", N);
 
                         //add mass to grid
-                        grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z() += N * particle_mass;
+                        grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w() += N * particle_mass;    //changed to w
                         // printf("mass: %f\n", grid[curr_grid[0]][curr_grid[1]].z);
                     }
                 }
@@ -198,6 +198,7 @@ void mpm_solver::initialize()
 void mpm_solver::update(double dt)
 {
 
+    std::cout<<"update"<<std::endl;
     //store old grid velocities
     Vec oldVelocities[n + 1][n + 1][n + 1];
     for (int i = 0; i <= n; i++)
@@ -248,7 +249,7 @@ void mpm_solver::update(double dt)
 
                         //add mass to grid
 
-                        grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z() += N * particle_mass;
+                        grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w() += N * particle_mass;    //changed to w
                     }
                 }
             }
@@ -274,11 +275,11 @@ void mpm_solver::update(double dt)
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
                         double N = weight(fx[0]) * weight(fx[1]) * weight(fx[2]);
                         //sum of particle's velocities
-                        if (grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z() > 0.0f)
+                        if (grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w() > 0.0f)  //changed to w
                         { //only if denominator is not 0
-                            grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].x() += N * p.v.x() * particle_mass / grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z();
-                            grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].y() += N * p.v.y() * particle_mass / grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z();
-                            grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z() += N * p.v.z() * particle_mass / grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z();
+                            grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].x() += N * p.v.x() * particle_mass / grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w(); //changed to w
+                            grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].y() += N * p.v.y() * particle_mass / grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w();
+                            grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].z() += N * p.v.z() * particle_mass / grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w();
                         }
                     }
                 }
@@ -367,12 +368,12 @@ void mpm_solver::update(double dt)
             {
                 auto &g = grid[i][j][k];
                 // No need for epsilon here
-                if (g[2] > 0)
+                if (g[3] > 0)   //changed to w
                 {
                     // Normalize by mass
                     // g /= g[2];
                     // Gravity
-                    g += dt * Vector3d(0, -200, 0);
+                    g += dt * Vector4d(0, -200, 0,0);   //not sure
 
                     //copied from taichi example
                     // boundary thickness
@@ -388,7 +389,7 @@ void mpm_solver::update(double dt)
                     double mu = 0.1;
 
                     //if inside the sphere...
-                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()) < circleRadius * circleRadius)
+                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y())+ (z - circleCenter.z()) * (z - circleCenter.z()) < circleRadius * circleRadius)
                     {
                         Vec n = (Vec(x, y, z) - circleCenter).normalized();
                         Vec v = Vec(g.x(), g.y(), g.z());
@@ -402,13 +403,15 @@ void mpm_solver::update(double dt)
                                 Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
                                 g.x() = v_prime.x();
                                 g.y() = v_prime.y();
+                                g.z() = v_prime.z();
+
                             }
                         }
                     }
                     // Sticky boundary
                     if (x < boundary || x > 1 - boundary || y > 1 - boundary)
                     {
-                        g = Vector3d(0);
+                        g = Vector4d(0);
                     }
                     // Separate boundary
                     if (y < boundary)
@@ -520,7 +523,7 @@ void mpm_solver::update(double dt)
         p.v = (1 - alpha) * v_PIC + alpha * vfLIP;
 //        p.v = v_PIC;
         // printf("P v: %f, %f\n", p.v[0], p.v[1]);
-
+//        cout<<p.v<<endl;
         //update particle positions
         p.x += p.v * dt;
     }
