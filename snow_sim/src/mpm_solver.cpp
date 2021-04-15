@@ -83,12 +83,15 @@ mpm_solver::mpm_solver()
 
 void mpm_solver::initialize()
 {
+
 //    std::cout << "initializing\n" << std::endl;
 
     //create shapes
     add_object(Vec(0.55, 0.45, 0.f), 0xFFFAFA);
 //    add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
 //    add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
+
+    std::cout << "Number of initialized particles: " << particles.size() << std::endl;
 
     //initialize particle weights and set mass of grid
     for (auto &p : particles)
@@ -594,7 +597,7 @@ void mpm_solver::add_from_csv(char *infile_path, Vec center, int c)
     split_line = getNextLineAndSplitIntoTokens(infile); //read two lines because first line is labels
     while (split_line.size() > 1)
     {
-        double x_pos = std::stof(split_line[0].c_str()) / 50.f + 0.5f;
+        double x_pos = std::stof(split_line[0].c_str()) / 50.f - 0.5f;
         double y_pos = std::stof(split_line[1].c_str()) / 50.f - 0.5f;
         double z_pos = std::stof(split_line[2].c_str()) / 50.f - 0.5f;
         particles.push_back(Particle(Vec(x_pos + center[0], y_pos + center[1], z_pos + center[2]), c)); //using x and y coordinates for 2d
@@ -608,46 +611,46 @@ int mpm_solver::run(int argc, char* argv[])
 //    GUI gui("double-time 2D MLS-MPM", window_size, window_size);
 //    auto &canvas = gui.get_canvas();
 
-    if (argc == 1) //default
-    {
-        add_object(Vec(0.55, 0.45, 0.f), 0xFFFAFA);
-//        add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
-//        add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
-    }
-    else
-    {
-        assert(argc == 2);
-        add_from_csv(argv[1], Vec(0.55, 0.85, 0.f), 0xF2B134);
-    }
+//    if (argc == 1) //default
+//    {
+//        add_object(Vec(0.55, 0.45, 0.f), 0xFFFAFA);
+////        add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
+////        add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
+//    }
+//    else
+//    {
+//        assert(argc == 2);
+//        add_from_csv(argv[1], Vec(0.55, 0.85, 0.f), 0xF2B134);
+//    }
 
-    int frame = 0;
+//    int frame = 0;
 
     //initialize particle values
     initialize();
 
     // Main Loop
-    for (int step = 0;; step++)
-    {
+//    for (int step = 0;; step++)
+//    {
         // Advance simulation
 //        update(dt);
 
         // Visualize frame
-        if (step % int(frame_dt / dt) == 0)
-        {
+//        if (step % int(frame_dt / dt) == 0)
+//        {
             // Clear background
 //            canvas.clear(0x112F41);
             // Box
 //            canvas.rect(Vec(0.04), Vec(0.96)).radius(2).color(0x4FB99F).close();
             // Particles
-            for (auto p : particles)
-            {
+//            for (auto p : particles)
+//            {
 //                canvas.circle(p.x).radius(2).color(p.c);
-            }
+//            }
             // Update image
 //            gui.update();
 
             // Write to disk (optional)
             // canvas.img.write_as_image(fmt::format("tmp/{:05d}.png", frame++));
-        }
-    }
+//        }
+//    }
 }
