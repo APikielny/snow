@@ -71,7 +71,9 @@ struct Particle
                                              Jp(1),
                                              F_e(1),
                                              F_p(1),
-                                             c(c) {}
+                                             c(c)
+    {
+    }
 };
 
 real weight(real x)
@@ -133,6 +135,9 @@ Vector3 grid[n + 1][n + 1];
 
 void initialize()
 {
+
+    memset(grid, 0, sizeof(grid));
+
     //initialize particle weights and set mass of grid
     for (auto &p : particles)
     {
@@ -346,6 +351,10 @@ void update(real dt)
             {
                 grid[i][j][0] += forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
                 grid[i][j][1] += forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
+                // if (forces[i][j][1] > 0.f)
+                // {
+                // std::cout << forces[i][j][1] << std::endl;
+                // }
             }
         }
     }
@@ -377,33 +386,33 @@ void update(real dt)
                 real mu = 0.1;
 
                 //if inside the sphere...
-                if ((x - circleCenter.x) * (x - circleCenter.x) + (y - circleCenter.y) * (y - circleCenter.y) < circleRadius * circleRadius)
-                {
-                    Vec n = normalized(Vec(x, y) - circleCenter);
-                    Vec v = Vec(g.x, g.y);
-                    real v_dot_n = v.dot(n);
-                    if (v_dot_n < 0)
-                    { //section 8 body collision
-                        Vec v_t = v - n * v_dot_n;
-                        real v_t_norm = pow(v_t.dot(v_t), 0.5);
-                        if (v_t_norm > 0)
-                        {
-                            Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
-                            g.x = v_prime.x;
-                            g.y = v_prime.y;
-                        }
-                    }
-                }
-                // Sticky boundary
-                if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-                {
-                    g = Vector3(0);
-                }
-                // Separate boundary
-                if (y < boundary)
-                {
-                    g[1] = std::max(0.0f, g[1]);
-                }
+                // if ((x - circleCenter.x) * (x - circleCenter.x) + (y - circleCenter.y) * (y - circleCenter.y) < circleRadius * circleRadius)
+                // {
+                //     Vec n = normalized(Vec(x, y) - circleCenter);
+                //     Vec v = Vec(g.x, g.y);
+                //     real v_dot_n = v.dot(n);
+                //     if (v_dot_n < 0)
+                //     { //section 8 body collision
+                //         Vec v_t = v - n * v_dot_n;
+                //         real v_t_norm = pow(v_t.dot(v_t), 0.5);
+                //         if (v_t_norm > 0)
+                //         {
+                //             Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
+                //             g.x = v_prime.x;
+                //             g.y = v_prime.y;
+                //         }
+                //     }
+                // }
+                // // Sticky boundary
+                // if (x < boundary || x > 1 - boundary || y > 1 - boundary)
+                // {
+                //     g = Vector3(0);
+                // }
+                // // Separate boundary
+                // if (y < boundary)
+                // {
+                //     g[1] = std::max(0.0f, g[1]);
+                // }
             }
             //copy end
         }
@@ -430,9 +439,10 @@ void update(real dt)
 
         //update force
 
-        p.F = (Mat(1) + dt * v_p_n_plus_1) * p.F; //equation in step 7, is Mat(1) the identity?
+        // std::cout << v_p_n_plus_1 << std::endl;
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
-        p.F_e = (Mat(1) + dt * v_p_n_plus_1) * p.F_e;
+        // p.F_e = (Mat(1) + dt * v_p_n_plus_1) * p.F_e;
+        p.F_e = (Mat(1)) * p.F_e;
         // printf("p.fe Before: %f\n", determinant(p.F_e));
 
         //plastic component - compiles but is does not change sim.
@@ -458,6 +468,7 @@ void update(real dt)
         // printf("p.fp After: %f\n", determinant(p.F_p));
 
         // printf("p.fe: %f\n", determinant(p.F));
+        // std::cout << p.F << std::endl;
 
         //update particle velocities
         Vec v_PIC(0, 0);
@@ -494,7 +505,9 @@ void update(real dt)
         // }
 
         //update particle velocities
-        p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
+        // p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
+        p.v = v_PIC;
+        // std::cout << p.v << std::endl;
         // printf("P v: %f, %f\n", p.v[0], p.v[1]);
 
         //update particle positions

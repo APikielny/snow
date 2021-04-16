@@ -93,7 +93,7 @@ void mpm_solver::initialize()
 //    std::cout << "initializing\n" << std::endl;
 
     //create shapes
-    add_object(Vec(0.55, 0.45, 0.f), 0xFFFAFA);
+    add_object(Vec(0.55, 0.45, 0.5f), 0xFFFAFA);
 //    add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
 //    add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
 
@@ -207,7 +207,7 @@ void mpm_solver::initialize()
 void mpm_solver::update(double dt)
 {
 
-    std::cout<<"update"<<std::endl;
+//    std::cout<<"update"<<std::endl;
     //store old grid velocities
     Vec oldVelocities[n + 1][n + 1][n + 1];
     for (int i = 0; i <= n; i++)
@@ -262,8 +262,8 @@ void mpm_solver::update(double dt)
     {
         Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
-        //loop through neighboring grids [-2,2]
-        //add velocity  to all neighboring grid cells
+//        loop through neighboring grids [-2,2]
+//        add velocity  to all neighboring grid cells
         for (int i = -2; i < 3; i++)
         {
             for (int j = -2; j < 3; j++)
@@ -302,7 +302,7 @@ void mpm_solver::update(double dt)
             }
         }
     }
-    //compute forces
+//    //compute forces
     for (auto &p : particles)
     {
         //loop through neighbourhood [-2, 2]
@@ -417,39 +417,40 @@ void mpm_solver::update(double dt)
 
                     //added a sphere collider (hemisphere)
                     Vec circleCenter = Vec(0.5, 0 + boundary, 0.f);
-                    double circleRadius = 0.1;
+                    double circleRadius = 1.f;
                     double mu = 0.1;
 
-//                    //if inside the sphere...
-//                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()))//+ (z - circleCenter.z()) * (z - circleCenter.z()) < circleRadius * circleRadius)
-//                    {
-//                        Vec n = (Vec(x, y, z) - circleCenter).normalized();
-//                        Vec v = Vec(g.x(), g.y(), g.z());
-//                        double v_dot_n = v.dot(n);
-//                        if (v_dot_n < 0)
-//                        { //section 8 body collision
-//                            Vec v_t = v - n * v_dot_n;
-//                            double v_t_norm = pow(v_t.dot(v_t), 0.5);
-//                            if (v_t_norm > 0)
-//                            {
-//                                Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
-//                                g.x() = v_prime.x();
-//                                g.y() = v_prime.y();
-//                                g.z() = v_prime.z();
+                    //if inside the sphere...
+                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()) < circleRadius * circleRadius)//+ (z - circleCenter.z()) * (z - circleCenter.z()) )
+                    {
+                        std::cout << "collide" << endl;
+                        Vec n = (Vec(x, y, z) - circleCenter).normalized();
+                        Vec v = Vec(g.x(), g.y(), g.z());
+                        double v_dot_n = v.dot(n);
+                        if (v_dot_n < 0)
+                        { //section 8 body collision
+                            Vec v_t = v - n * v_dot_n;
+                            double v_t_norm = pow(v_t.dot(v_t), 0.5);
+                            if (v_t_norm > 0)
+                            {
+                                Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
+                                g.x() = v_prime.x();
+                                g.y() = v_prime.y();
+                                g.z() = v_prime.z();
 
-//                            }
-//                        }
-//                    }
-                    // Sticky boundary
-//                    if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-//                    {
-//                        g = Vector4d(0);
-//                    }
-//                    // Separate boundary
-//                    if (y < boundary)
-//                    {
-//                        g[1] = std::max(0.0, g[1]);
-//                    }
+                            }
+                        }
+                    }
+//                     Sticky boundary
+                    if (x < boundary || x > 1 - boundary || y > 1 - boundary)
+                    {
+                        g = Vector4d(0);
+                    }
+                    // Separate boundary
+                    if (y < boundary)
+                    {
+                        g[1] = std::max(0.0, g[1]);
+                    }
                 }
             }
         }
@@ -480,44 +481,42 @@ void mpm_solver::update(double dt)
             }
         }
 
-//        //update force
+        //update force
 
-        p.F = (Mat(MatrixXd::Identity(3, 3)) + dt * v_p_n_plus_1) * p.F; //equation in step 7, is Mat(1) the identity?
-        //update elastic compoenent - before we do plasticity the elastic component gets all of the F
+
+//        update elastic compoenent - before we do plasticity the elastic component gets all of the F
         p.F_e = (Mat(MatrixXd::Identity(3, 3)) + dt * v_p_n_plus_1) * p.F_e;
-        // printf("p.fe Before: %f\n", determinant(p.F_e));
+//         printf("p.fe Before: %f\n", determinant(p.F_e));
 
-//        //plastic component - compiles but is does not change sim.
-//        Mat F_hat_P_p = p.F_p; // Section 7
+        //plastic component - compiles but is does not change sim.
+        Mat F_hat_P_p = p.F_p; // Section 7
 
-//        JacobiSVD<MatrixXd> svd(p.F_e, ComputeThinU | ComputeThinV); //compute singular value decomposition
-//        Mat U_p = -1.0*svd.matrixU();
-//        Mat Sig_hat_p = svd.singularValues().asDiagonal();
-//        Sig_hat_p.col(1)[1] = -1.0*Sig_hat_p.col(1)[1];
-//        Mat V_transpose_p = svd.matrixV().transpose();
-//        V_transpose_p.col(0) = -1.0*V_transpose_p.col(0);
+        JacobiSVD<MatrixXd> svd(p.F_e, ComputeThinU | ComputeThinV); //compute singular value decomposition
+        Mat U_p = svd.matrixU();
+        Mat Sig_hat_p = svd.singularValues().asDiagonal();
+        Mat V_transpose_p = svd.matrixV().transpose();
 
-////        //ERROR CHECKING SVD - https://stackoverflow.com/questions/34392115/eigen-jacobi-svd
-////        MatrixXd Cp = U_p * Sig_hat_p * V_transpose_p;
-////        MatrixXd diff = Cp - p.F_e;
-////        cout << "ERROR CHECKING SVD: " << diff.array().abs().sum() << "\n";
+//        //ERROR CHECKING SVD - https://stackoverflow.com/questions/34392115/eigen-jacobi-svd
+//        MatrixXd Cp = U_p * Sig_hat_p * V_transpose_p;
+//        MatrixXd diff = Cp - p.F_e;
+//        cout << "ERROR CHECKING SVD: " << diff.array().abs().sum() << "\n";
 
 
-//        double theta_c = 2.5f * pow(10, -2.0); //move up later
-//        double theta_s = 7.5f * pow(10, -3.0);
+        double theta_c = 2.5f * pow(10, -2.0); //move up later
+        double theta_s = 7.5f * pow(10, -3.0);
 
 
-//        Mat Sig_p;
-//        Sig_p = Sig_hat_p;
-//        //    std::cout<<"409: " <<(Sig_p)<<std::endl;
+        Mat Sig_p;
+        Sig_p = Sig_hat_p;
+        //    std::cout<<"409: " <<(Sig_p)<<std::endl;
 
-//        Sig_p[0][0] = clamp(Sig_p[0][0], 1 - theta_c, 1 + theta_s); //clamp
-//        Sig_p[1][1] = clamp(Sig_p[1][1], 1 - theta_c, 1 + theta_s);
+        Sig_p.col(0)[0] = clamp(Sig_p.col(0)[0], 1 - theta_c, 1 + theta_s); //clamp
+        Sig_p.col(1)[1] = clamp(Sig_p.col(1)[1], 1 - theta_c, 1 + theta_s);
 
-        // std::cout<<"414: "<<(Sig_p)<<std::endl;
-//        p.F_e = U_p * Sig_p * V_transpose_p;
-//        p.F_p = V_transpose_p.transpose() * Sig_p.inverse() * U_p.transpose() * p.F; //
-//        p.F = p.F_e * p.F_p;
+//         std::cout<<"414: "<<(Sig_p)<<std::endl;
+        p.F_e = U_p * Sig_p * V_transpose_p;
+        p.F_p = V_transpose_p.transpose() * Sig_p.inverse() * U_p.transpose() * p.F; //
+        p.F = p.F_e * p.F_p;
 
 
         //update particle velocities
@@ -552,12 +551,13 @@ void mpm_solver::update(double dt)
         double epsilon = 1e-4;
 
         //update particle velocities
-        p.v = (1 - alpha) * v_PIC + alpha * vfLIP;
-//        p.v = v_PIC;
+//        p.v = (1 - alpha) * v_PIC + alpha * vfLIP;
+        p.v = v_PIC;
         // printf("P v: %f, %f\n", p.v[0], p.v[1]);
 //        cout<<p.v<<endl;
         //update particle positions
         p.x += p.v * dt;
+//        std::cout << p.x << std::endl;
     }
 //    std::cout << "update forces\n" << std::endl;
 
@@ -592,8 +592,7 @@ void mpm_solver::add_object(Vec center, int c)
     // Randomly sample num_particles particles in the square
     for (int i = 0; i < num_particles; i++)
     {
-        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, 0, 0) * 2.0f - Vec(1, 1, 0)) * 0.08 + center, c));
-
+        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, rand()/(float)RAND_MAX) * 2.0f - Vec(1, 1, 1)) * 0.08 + center, c));
     }
 }
 
