@@ -316,19 +316,51 @@ void update(real dt)
                     Mat stress;
                     if (J != 0.0f)
                     {
+                        // cout << "non zero J" << std::endl;
                         // printf("line 315");
                         real mu = mu_0 * exp(xi * (1 - J_p));
+                        // if (mu != 0.0f)
+                        // {
+                        //     cout << "non zero mu" << std::endl;
+                        // }
                         real lambda = lambda_0 * exp(xi * (1 - J_p));
+                        // if (lambda != 0.0f)
+                        // {
+                        //     cout << "non zero lambda" << std::endl;
+                        // }
+                        // if (determinant(p.F_e) != 0.0f)
+                        // {
+                        //     cout << "non zero P fe" << std::endl;
+                        // }
+                        // cout << "mu: " << mu << ", J: " << J << ", p.F_e: " << p.F_e << ", Re: " << Re << ", lambda: " << lambda << ", J_e: " << J_e << endl;
+                        // if (determinant(p.F_e - Re) != 0.0f)
+                        // {
+                        //     cout << "non zero difference!" << endl; //TODO!! this is always zero
+                        // }
+                        // if (J_e - 1 != 0.0f)
+                        // {
+                        //     cout << "non zero difference!" << endl; //TODO!! this is always zero too
+                        // }
+                        // cout << p.F_e - Re << endl;
                         stress = ((2.0f * mu) / J) * (p.F_e - Re) * transposed(p.F_e) + (lambda * 1.0f / J) * (J_e - 1) * (J_e * Mat(1)); // above quation 6
+                        // stress = ((2.0f * mu) / J) * (p.F_e) * transposed(p.F_e) + (lambda * 1.0f / J) * (J_e - 1) * (J_e * Mat(1)); // above quation 6
+
+                        // cout << "stress: " << stress << endl;
                     }
                     else
                     {
                         stress = Mat(0.0f);
                     }
+                    if (determinant(stress) != 0)
+                    {
+                        // cout << "non zero stress: " << stress << std::endl;
+                    }
 
                     Vec N = weight_gradient(fx);
                     // printf("curr coords, %d,%d", curr_grid.x, curr_grid.y);
                     Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
+                    // force_at_grid_by_particle = Vector2f(-0.1f, 0.1f);
+
                     // printf("stress*n: %f, %f\n", multiply_vec_transpose(stress, N)[0], multiply_vec_transpose(stress, N)[1]);
                     // printf("Vpn: %f\n", V_p_n);
                     real epsilon = 1e-4f;
@@ -349,8 +381,10 @@ void update(real dt)
         {
             if (grid[i][j][2] > 0.f)
             {
-                grid[i][j][0] += forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
-                grid[i][j][1] += forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
+                // cout << "grid forces: " << forces[i][j][0] << ", " << forces[i][j][1] << std::endl;
+
+                grid[i][j][0] += forces[i][j][0] * dt; //(1.0f / grid[i][j][2]) * dt;
+                grid[i][j][1] += forces[i][j][1] * dt; //(1.0f / grid[i][j][2]) * dt;
                 // if (forces[i][j][1] > 0.f)
                 // {
                 // std::cout << forces[i][j][1] << std::endl;
@@ -386,33 +420,33 @@ void update(real dt)
                 real mu = 0.1;
 
                 //if inside the sphere...
-                // if ((x - circleCenter.x) * (x - circleCenter.x) + (y - circleCenter.y) * (y - circleCenter.y) < circleRadius * circleRadius)
-                // {
-                //     Vec n = normalized(Vec(x, y) - circleCenter);
-                //     Vec v = Vec(g.x, g.y);
-                //     real v_dot_n = v.dot(n);
-                //     if (v_dot_n < 0)
-                //     { //section 8 body collision
-                //         Vec v_t = v - n * v_dot_n;
-                //         real v_t_norm = pow(v_t.dot(v_t), 0.5);
-                //         if (v_t_norm > 0)
-                //         {
-                //             Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
-                //             g.x = v_prime.x;
-                //             g.y = v_prime.y;
-                //         }
-                //     }
-                // }
-                // // Sticky boundary
-                // if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-                // {
-                //     g = Vector3(0);
-                // }
-                // // Separate boundary
-                // if (y < boundary)
-                // {
-                //     g[1] = std::max(0.0f, g[1]);
-                // }
+                if ((x - circleCenter.x) * (x - circleCenter.x) + (y - circleCenter.y) * (y - circleCenter.y) < circleRadius * circleRadius)
+                {
+                    Vec n = normalized(Vec(x, y) - circleCenter);
+                    Vec v = Vec(g.x, g.y);
+                    real v_dot_n = v.dot(n);
+                    if (v_dot_n < 0)
+                    { //section 8 body collision
+                        Vec v_t = v - n * v_dot_n;
+                        real v_t_norm = pow(v_t.dot(v_t), 0.5);
+                        if (v_t_norm > 0)
+                        {
+                            Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
+                            g.x = v_prime.x;
+                            g.y = v_prime.y;
+                        }
+                    }
+                }
+                // Sticky boundary
+                if (x < boundary || x > 1 - boundary || y > 1 - boundary)
+                {
+                    g = Vector3(0);
+                }
+                // Separate boundary
+                if (y < boundary)
+                {
+                    g[1] = std::max(0.0f, g[1]);
+                }
             }
             //copy end
         }
@@ -441,8 +475,9 @@ void update(real dt)
 
         // std::cout << v_p_n_plus_1 << std::endl;
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
-        // p.F_e = (Mat(1) + dt * v_p_n_plus_1) * p.F_e;
-        p.F_e = (Mat(1)) * p.F_e;
+        p.F_e = (Mat(1) + dt * v_p_n_plus_1) * p.F_e;
+        // cout << p.F_e << endl;
+        // p.F_e = (Mat(1)) * p.F_e;
         // printf("p.fe Before: %f\n", determinant(p.F_e));
 
         //plastic component - compiles but is does not change sim.
@@ -452,23 +487,31 @@ void update(real dt)
         real ten = 10;
         real theta_c = 2.5f * pow(ten, -2.0); //move up later
         real theta_s = 7.5f * pow(ten, -3.0);
+        // real theta_c = 0.f; //move up later
+        // real theta_s = 0.f;
 
         Mat Sig_p;
         Sig_p = Sig_hat_p;
-        //    std::cout<<"409: " <<(Sig_p)<<std::endl;
+        // std::cout << "409: " << (Sig_p) << std::endl;
 
         Sig_p[0][0] = clamp(Sig_p[0][0], 1 - theta_c, 1 + theta_s); //clamp
         Sig_p[1][1] = clamp(Sig_p[1][1], 1 - theta_c, 1 + theta_s);
 
-        // std::cout<<"414: "<<(Sig_p)<<std::endl;
+        // std::cout << "414: " << (Sig_p) << std::endl;
+        p.F = p.F_e * p.F_p;
+
         p.F_e = U_p * Sig_p * V_transpose_p;
         p.F_p = transposed(V_transpose_p) * inversed(Sig_p) * transposed(U_p) * p.F; //
-        p.F = p.F_e * p.F_p;
+
+        // assert(p.F == p.F_e * p.F_p); //TODO
+
+        // p.F = p.F_p;
+        // p.F = Mat(500);
         // printf("p.fe After: %f\n", determinant(p.F_e));
         // printf("p.fp After: %f\n", determinant(p.F_p));
 
         // printf("p.fe: %f\n", determinant(p.F));
-        // std::cout << p.F << std::endl;
+        // std::cout << p.F_p << std::endl;
 
         //update particle velocities
         Vec v_PIC(0, 0);

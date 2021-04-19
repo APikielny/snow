@@ -409,7 +409,7 @@ void mpm_solver::update(double dt)
 
                     //copied from taichi example
                     // boundary thickness
-                    double boundary = 0.05;
+                    double boundary = 0.25;
                     // Node coordinates
                     double x = double(i) / n;
                     double y = double(j) / n;
@@ -417,13 +417,15 @@ void mpm_solver::update(double dt)
 
                     //added a sphere collider (hemisphere)
                     Vec circleCenter = Vec(0.5, 0 + boundary, 0.f);
-                    double circleRadius = 1.f;
+                    double circleRadius = 0.1f;
                     double mu = 0.1;
 
                     //if inside the sphere...
                     if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()) < circleRadius * circleRadius)//+ (z - circleCenter.z()) * (z - circleCenter.z()) )
                     {
+
                         std::cout << "collide" << endl;
+//                        g.y() = 0.f;
                         Vec n = (Vec(x, y, z) - circleCenter).normalized();
                         Vec v = Vec(g.x(), g.y(), g.z());
                         double v_dot_n = v.dot(n);
@@ -442,10 +444,10 @@ void mpm_solver::update(double dt)
                         }
                     }
 //                     Sticky boundary
-                    if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-                    {
-                        g = Vector4d(0);
-                    }
+//                    if (x < boundary || x > 1 - boundary || y > 1 - boundary)
+//                    {
+//                        g = Vector4d(0);
+//                    }
                     // Separate boundary
                     if (y < boundary)
                     {
@@ -592,7 +594,7 @@ void mpm_solver::add_object(Vec center, int c)
     // Randomly sample num_particles particles in the square
     for (int i = 0; i < num_particles; i++)
     {
-        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, rand()/(float)RAND_MAX) * 2.0f - Vec(1, 1, 1)) * 0.08 + center, c));
+        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, 0) * 2.0f - Vec(1, 1, 1)) * 0.08 + center, c));
     }
 }
 

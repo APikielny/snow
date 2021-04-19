@@ -66,7 +66,7 @@ private:
     const static int n = 40;
 
     //number of particles per object
-    const int num_particles = 20.f;
+    const int num_particles = 50.f;
 
     const double dt = 1e-4f;
     const double frame_dt = 1e-3f;
