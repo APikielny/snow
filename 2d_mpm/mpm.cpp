@@ -147,9 +147,9 @@ void initialize()
 
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i < neighbor + 1; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j < neighbor + 1; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
@@ -175,9 +175,9 @@ void initialize()
     {
         real density;
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i < neighbor + 1; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j < neighbor + 1; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
@@ -233,9 +233,9 @@ void update(real dt)
 
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i < neighbor + 1; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j < neighbor + 1; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
@@ -260,9 +260,9 @@ void update(real dt)
 
         //loop through neighboring grids [-2,2]
         //add velocity  to all neighboring grid cells
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i < neighbor + 1; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j < neighbor + 1; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
@@ -295,9 +295,9 @@ void update(real dt)
         //loop through neighbourhood [-2, 2]
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i < neighbor + 1; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j < neighbor + 1; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
@@ -457,9 +457,9 @@ void update(real dt)
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
         Mat v_p_n_plus_1;
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i < neighbor + 1; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j < neighbor + 1; j++)
             {
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
@@ -517,9 +517,9 @@ void update(real dt)
         Vec v_PIC(0, 0);
         Vec v_FLIP = p.v;
         // printf("initial flip: %f\n", p.v[1]);
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i < neighbor + 1; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j < neighbor + 1; j++)
             {
 
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
