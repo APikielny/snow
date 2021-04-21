@@ -21,17 +21,17 @@ const int window_size = 800;
 const int n = 80;
 
 //number of particles per object
-const int num_particles = 1000.f;
+const int num_particles = 500.f;
 
 const real dt = 1e-4_f;
 const real frame_dt = 1e-3_f;
 const real dx = 1.0_f / n;
 const real inv_dx = 1.0_f / dx;
 
-const real alpha = 0.95;
+const real alpha = 0.05;
 
 // Snow material properties
-const auto particle_mass = 1.0_f;
+const auto particle_mass = 1.0f;
 const auto vol = 1.0_f; // Particle Volume
 const auto xi = 10.0_f; // Snow hardening factor
 const auto E = 1e4_f;   // Young's Modulus
@@ -43,7 +43,7 @@ const real mu_0 = E / (2 * (1 + nu));
 const real lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu));
 
 //neighbor grid
-const int neighbor = 2;
+const int neighbor = 15; //[from -neighbor to neighbor]
 int iteration = 0;
 
 struct Particle
@@ -124,7 +124,11 @@ Vec multiply_vec_transpose(Mat m, Vec v)
 {
     // printf("in vec: %f,%f\n", v[0], v[1]);
     // printf("in mat: %f,%f, %f, %f\n", m[0][0], m[0][1], m[1][0], m[1][1]);
-    Vec vec = Vec(m[0][0] * v[0] + m[1][0] * v[0], m[0][1] * v[1] + m[1][1] * v[1]);
+    // cout << "M: " << m << ", v :" << v << endl;
+
+    Vec vec = Vec(m[0][0] * v[0] + m[1][0] * v[1], m[0][1] * v[0] + m[1][1] * v[1]);
+
+    // cout << "vec: " << vec << endl;
     return vec;
 }
 
@@ -132,6 +136,51 @@ std::vector<Particle> particles;
 
 // Vector3: [velocity_x, velocity_y, mass]
 Vector3 grid[n + 1][n + 1];
+
+//takes in current node coordinates and velocity and outputs velocity after collision
+void collide(Vec coords, Vec &velocity)
+{
+    // Vec out_vel(0.0f, 0.0f);
+
+    //copied from taichi example
+    // boundary thickness
+    real boundary = 0.05;
+
+    //added a sphere collider (hemisphere)
+    Vec circleCenter = Vec(0.5, 0.2 + boundary);
+    real circleRadius = 0.05;
+    real mu = 0.1;
+
+    //if inside the sphere...
+    if ((coords.x - circleCenter.x) * (coords.x - circleCenter.x) + (coords.y - circleCenter.y) * (coords.y - circleCenter.y) < circleRadius * circleRadius)
+    {
+        Vec n = normalized(coords - circleCenter);
+        real v_dot_n = velocity.dot(n);
+        if (v_dot_n < 0)
+        { //section 8 body collision
+            Vec v_t = velocity - n * v_dot_n;
+            real v_t_norm = pow(v_t.dot(v_t), 0.5);
+            if (v_t_norm > 0)
+            {
+                Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
+                velocity = v_prime;
+            }
+        }
+    }
+    // Sticky boundary
+    else
+    {
+        if (coords.x < boundary || coords.x > 1 - boundary || coords.y > 1 - boundary)
+        {
+            velocity = Vec(0.f, 0.f);
+        }
+        // Separate boundary
+        if (coords.y < boundary)
+        {
+            velocity[1] = std::max(0.0f, velocity[0]);
+        }
+    }
+}
 
 void initialize()
 {
@@ -173,7 +222,7 @@ void initialize()
     //initializing particle volumes based on density of grid
     for (auto &p : particles)
     {
-        real density;
+        real density = 0.0f;
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
         for (int i = -neighbor; i < neighbor + 1; i++)
         {
@@ -191,7 +240,7 @@ void initialize()
                     // h^3 = dx*dx*dx
                     // h^2 for 2d
                     // density is sum of grid masses multiplied by weight divided by vol/area of cell
-                    density += grid[curr_grid.x][curr_grid.y].z * N / (dx * dx);
+                    density += grid[curr_grid.x][curr_grid.y].z * N; // / (dx * dx);
                     // printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
                 }
             }
@@ -204,23 +253,6 @@ void initialize()
 
 void update(real dt)
 {
-
-    //store old grid velocities
-    Vector2f oldVelocities[n + 1][n + 1];
-    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j <= n; j++)
-        {
-            auto &g = grid[i][j];
-            oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity
-            // printf("old velocity: %f\n", oldVelocities[i][j].y);
-            // if (g.z > 0.0f)
-            // {                                                  //only if denominator is not 0
-            //     g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
-            //     g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
-            // }
-        }
-    }
 
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
@@ -280,6 +312,23 @@ void update(real dt)
         }
     }
 
+    //store old grid velocities
+    Vector2f oldVelocities[n + 1][n + 1];
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            auto &g = grid[i][j];
+            oldVelocities[i][j] = Vector2f(g.x, g.y); //store old velocity
+            // printf("old velocity: %f\n", oldVelocities[i][j].y);
+            // if (g.z > 0.0f)
+            // {                                                  //only if denominator is not 0
+            //     g.x = g.x + dt * -1.0f * forces[i][j].x / g.z; //equation 10. update velocity (force is negative of sum in eq 6)
+            //     g.y = g.y + dt * -1.0f * forces[i][j].y / g.z;
+            // }
+        }
+    }
+
     //data structure to store grid forces
     Vector2f forces[n + 1][n + 1]; //same dimensions as grid
     for (int i = 0; i <= n; i++)
@@ -295,84 +344,44 @@ void update(real dt)
         //loop through neighbourhood [-2, 2]
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
+        real V_p_n = p.vol; //page 6 (removed * J)
+
+        Mat Re;
+        Mat Se;
+        polar_decomp(p.F_e, Re, Se);
+
+        real J_e = determinant(p.F_e);
+        real J = determinant(p.F);
+        real J_p = determinant(p.F_p);
+        Mat stress;
+
+        real mu = mu_0 * exp(xi * (1 - J_p));
+
+        real lambda = lambda_0 * exp(xi * (1 - J_p));
+
+        stress = ((2.0f * mu)) * (p.F_e - Re) * transposed(p.F_e) + (lambda) * (J_e - 1) * (J_e * Mat(1)); // from tech report, but don't use J because we just multiply by it after from V_p_n
+
         for (int i = -neighbor; i < neighbor + 1; i++)
         {
             for (int j = -neighbor; j < neighbor + 1; j++)
             {
+
                 Vector2i curr_grid = Vector2i(base_coord.x + i, base_coord.y + j);
                 if (curr_grid.x >= 0 && curr_grid.x <= n && curr_grid.y >= 0 && curr_grid.y <= n)
                 { //check bounds 0 to n in both dirs
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
-                    real V_p_n = determinant(p.F) * p.vol; //page 6
-                    Mat F_hat_E_p = p.F_e;                 // equation 4 (x_hat = x_i)
-
-                    Mat Re;
-                    Mat Se;
-                    polar_decomp(p.F_e, Re, Se);
-
-                    real J_e = determinant(p.F_e);
-                    real J = determinant(p.F);
-                    real J_p = determinant(p.F_p);
-                    Mat stress;
-                    if (J != 0.0f)
-                    {
-                        // cout << "non zero J" << std::endl;
-                        // printf("line 315");
-                        real mu = mu_0 * exp(xi * (1 - J_p));
-                        // if (mu != 0.0f)
-                        // {
-                        //     cout << "non zero mu" << std::endl;
-                        // }
-                        real lambda = lambda_0 * exp(xi * (1 - J_p));
-                        // if (lambda != 0.0f)
-                        // {
-                        //     cout << "non zero lambda" << std::endl;
-                        // }
-                        // if (determinant(p.F_e) != 0.0f)
-                        // {
-                        //     cout << "non zero P fe" << std::endl;
-                        // }
-                        // cout << "mu: " << mu << ", J: " << J << ", p.F_e: " << p.F_e << ", Re: " << Re << ", lambda: " << lambda << ", J_e: " << J_e << endl;
-                        // if (determinant(p.F_e - Re) != 0.0f)
-                        // {
-                        //     cout << "non zero difference!" << endl; //TODO!! this is always zero
-                        // }
-                        // if (J_e - 1 != 0.0f)
-                        // {
-                        //     cout << "non zero difference!" << endl; //TODO!! this is always zero too
-                        // }
-                        // cout << p.F_e - Re << endl;
-                        stress = ((2.0f * mu) / J) * (p.F_e - Re) * transposed(p.F_e) + (lambda * 1.0f / J) * (J_e - 1) * (J_e * Mat(1)); // above quation 6
-                        // stress = ((2.0f * mu) / J) * (p.F_e) * transposed(p.F_e) + (lambda * 1.0f / J) * (J_e - 1) * (J_e * Mat(1)); // above quation 6
-
-                        // cout << "stress: " << stress << endl;
-                    }
-                    else
-                    {
-                        stress = Mat(0.0f);
-                    }
-                    if (determinant(stress) != 0)
-                    {
-                        // cout << "non zero stress: " << stress << std::endl;
-                    }
-
                     Vec N = weight_gradient(fx);
                     // printf("curr coords, %d,%d", curr_grid.x, curr_grid.y);
                     Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
-                    // force_at_grid_by_particle = Vector2f(-0.1f, 0.1f);
+                    // cout << V_p_n << endl;
 
-                    // printf("stress*n: %f, %f\n", multiply_vec_transpose(stress, N)[0], multiply_vec_transpose(stress, N)[1]);
-                    // printf("Vpn: %f\n", V_p_n);
-                    real epsilon = 1e-4f;
-                    // if (abs(force_at_grid_by_particle[1]) > epsilon)
-                    // {
-                    //     printf("force: %f, %f\n", force_at_grid_by_particle[0], force_at_grid_by_particle[1]);
-                    // }
-                    forces[curr_grid.x][curr_grid.y] += force_at_grid_by_particle;
+                    forces[curr_grid.x][curr_grid.y] -= force_at_grid_by_particle;
                 }
             }
         }
     }
+
+    real Gravity = -9.8f;
 
     //Step 4
     for (int i = 0; i <= n; i++)
@@ -383,11 +392,14 @@ void update(real dt)
             {
                 // cout << "grid forces: " << forces[i][j][0] << ", " << forces[i][j][1] << std::endl;
 
-                grid[i][j][0] += forces[i][j][0] * dt; //(1.0f / grid[i][j][2]) * dt;
-                grid[i][j][1] += forces[i][j][1] * dt; //(1.0f / grid[i][j][2]) * dt;
+                //add gravity
+                // forces[i][j][1] += Gravity * grid[i][j][2];
+
+                grid[i][j][0] += 5.f * forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
+                grid[i][j][1] += 5.f * forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
                 // if (forces[i][j][1] > 0.f)
                 // {
-                // std::cout << forces[i][j][1] << std::endl;
+                // std::cout << forces[i][j] << std::endl;
                 // }
             }
         }
@@ -403,50 +415,20 @@ void update(real dt)
             if (g[2] > 0)
             {
                 // Normalize by mass
-                // g /= g[2];
+                // // g /= g[2];
                 // Gravity
                 g += dt * Vector3(0, -200, 0);
 
-                //copied from taichi example
-                // boundary thickness
-                real boundary = 0.05;
-                // Node coordinates
+                // // Node coordinates
                 real x = (real)i / n;
                 real y = real(j) / n;
 
-                //added a sphere collider (hemisphere)
-                Vec circleCenter = Vec(0.5, 0 + boundary);
-                real circleRadius = 0.1;
-                real mu = 0.1;
+                Vec out_vel = Vec(g.x, g.y);
 
-                //if inside the sphere...
-                if ((x - circleCenter.x) * (x - circleCenter.x) + (y - circleCenter.y) * (y - circleCenter.y) < circleRadius * circleRadius)
-                {
-                    Vec n = normalized(Vec(x, y) - circleCenter);
-                    Vec v = Vec(g.x, g.y);
-                    real v_dot_n = v.dot(n);
-                    if (v_dot_n < 0)
-                    { //section 8 body collision
-                        Vec v_t = v - n * v_dot_n;
-                        real v_t_norm = pow(v_t.dot(v_t), 0.5);
-                        if (v_t_norm > 0)
-                        {
-                            Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
-                            g.x = v_prime.x;
-                            g.y = v_prime.y;
-                        }
-                    }
-                }
-                // Sticky boundary
-                if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-                {
-                    g = Vector3(0);
-                }
-                // Separate boundary
-                if (y < boundary)
-                {
-                    g[1] = std::max(0.0f, g[1]);
-                }
+                collide(Vec(x, y), out_vel);
+
+                g.x = out_vel.x;
+                g.y = out_vel.y;
             }
             //copy end
         }
@@ -456,7 +438,7 @@ void update(real dt)
     {
         Vector2i base_coord = (p.x * inv_dx - Vec(0.5f)).cast<int>();
 
-        Mat v_p_n_plus_1;
+        Mat v_p_n_plus_1(0);
         for (int i = -neighbor; i < neighbor + 1; i++)
         {
             for (int j = -neighbor; j < neighbor + 1; j++)
@@ -481,14 +463,13 @@ void update(real dt)
         // printf("p.fe Before: %f\n", determinant(p.F_e));
 
         //plastic component - compiles but is does not change sim.
-        Mat F_hat_P_p = p.F_p; // Section 7
         Mat U_p, Sig_hat_p, V_transpose_p;
         svd(p.F_e, U_p, Sig_hat_p, V_transpose_p); //compute singular value decomposition
         real ten = 10;
-        real theta_c = 2.5f * pow(ten, -2.0); //move up later
+        // real theta_c = 2.5f * pow(ten, -2.0); //move up later
         real theta_s = 7.5f * pow(ten, -3.0);
-        // real theta_c = 0.f; //move up later
-        // real theta_s = 0.f;
+        real theta_c = 1.2f * pow(ten, -2.0); //move up later
+        // real theta_s = 5.f * pow(ten, -3.0);
 
         Mat Sig_p;
         Sig_p = Sig_hat_p;
@@ -503,7 +484,10 @@ void update(real dt)
         p.F_e = U_p * Sig_p * V_transpose_p;
         p.F_p = transposed(V_transpose_p) * inversed(Sig_p) * transposed(U_p) * p.F; //
 
+        // cout << p.F << endl;
+
         // assert(p.F == p.F_e * p.F_p); //TODO
+        // cout << p.F - p.F_e * p.F_p << endl;
 
         // p.F = p.F_p;
         // p.F = Mat(500);
@@ -511,7 +495,7 @@ void update(real dt)
         // printf("p.fp After: %f\n", determinant(p.F_p));
 
         // printf("p.fe: %f\n", determinant(p.F));
-        // std::cout << p.F_p << std::endl;
+        // std::cout << p.F_e << std::endl;
 
         //update particle velocities
         Vec v_PIC(0, 0);
@@ -537,7 +521,6 @@ void update(real dt)
                 }
             }
         }
-        real epsilon = 1e-4;
         // if (abs(v_PIC.y) > epsilon)
         // {
         //     printf("pic y: %f\n", v_PIC.y);
@@ -548,10 +531,13 @@ void update(real dt)
         // }
 
         //update particle velocities
-        // p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
-        p.v = v_PIC;
+        p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
+        // p.v = v_PIC;
         // std::cout << p.v << std::endl;
         // printf("P v: %f, %f\n", p.v[0], p.v[1]);
+
+        //as per section 8 of the paper, apply collisions again just before updating positions
+        collide(p.x, p.v);
 
         //update particle positions
         p.x += p.v * dt;
@@ -615,8 +601,8 @@ int main(int argc, char *argv[])
     if (argc == 1) //default
     {
         add_object(Vec(0.55, 0.45), 0xFFFAFA);
-        add_object(Vec(0.45, 0.65), 0xFFFAFA);
-        add_object(Vec(0.55, 0.85), 0xFFFAFA);
+        // add_object(Vec(0.45, 0.65), 0xFFFAFA);
+        // add_object(Vec(0.55, 0.85), 0xFFFAFA);
     }
     else
     {
