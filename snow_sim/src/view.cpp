@@ -183,6 +183,9 @@ void View::tick()
     float seconds = m_time.restart() * 0.001f;
     m_sim.update(1e-4f);
 
+    std::string outfile;
+    m_sim.vdb_write(outfile);
+
     auto look = m_camera.getLook();
     look.y() = 0;
     look.normalize();

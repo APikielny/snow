@@ -55,6 +55,8 @@ public:
 
     std::vector<Particle> particles;
 
+    void vdb_write(std::string file);
+
 private:
     //for rendering
     Shape m_shape;

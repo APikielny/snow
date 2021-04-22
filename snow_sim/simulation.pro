@@ -19,6 +19,7 @@ SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
     src/mpm_solver.cpp \
+    src/vdb_writer.cpp \
     src/view.cpp \
     src/viewformat.cpp \
     src/graphics/Shader.cpp \
