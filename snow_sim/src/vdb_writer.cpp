@@ -4,11 +4,11 @@ void mpm_solver::vdb_write(std::string file)
 {
 //    // Initialize the OpenVDB library.  This must be called at least
 //    // once per program and may safely be called multiple times.
-//    openvdb::initialize();
-//    // Create an empty floating-point grid with background value 0.
-//    openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
-//    // Get an accessor for coordinate-based access to voxels.
-//    openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
+    openvdb::initialize();
+    // Create an empty floating-point grid with background value 0.
+    openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
+    // Get an accessor for coordinate-based access to voxels.
+    openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
 
 
     float sum_density = 0.0f;
@@ -27,16 +27,16 @@ void mpm_solver::vdb_write(std::string file)
 
                 sum_density += density;
 
-//                if (density > 0.0f) {
-//                    int d = density;
-//                }
+                if (density > 0.0f) {
+                    int d = density;
+                }
 
                 // Define a coordinate with large signed indices.
-//                openvdb::Coord xyz(i, j, k);
-//                accessor.setValue(xyz, density);
+                openvdb::Coord xyz(i, j, k);
+                accessor.setValue(xyz, density);
 
                 //print grid densities
-//                std::cout << "Grid" << xyz << " = " << accessor.getValue(xyz) << std::endl;
+                std::cout << "Grid" << xyz << " = " << accessor.getValue(xyz) << std::endl;
             }
         }
     }
