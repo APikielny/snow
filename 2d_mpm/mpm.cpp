@@ -182,6 +182,7 @@ void collide(Vec coords, Vec &velocity)
     // Separate boundary
     if (coords.y < boundary)
     {
+        velocity[0] = 0.0f;
         velocity[1] = std::max(0.0f, velocity[0]);
     }
 }
@@ -244,7 +245,7 @@ void initialize()
                     // h^3 = dx*dx*dx
                     // h^2 for 2d
                     // density is sum of grid masses multiplied by weight divided by vol/area of cell
-                    density += grid[curr_grid.x][curr_grid.y].z * N / (dx * dx);
+                    density += grid[curr_grid.x][curr_grid.y].z * N; // / (dx * dx);
                     // printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
                 }
             }
@@ -367,7 +368,8 @@ void update(real dt)
 
         // stress = stress * 1000.f;
 
-        // cout << stress << endl;
+        // cout << "stress: " << stress << endl;
+        // cout << "p.fe: " << p.F_e << endl;
 
         for (int i = -neighbor; i < neighbor + 1; i++)
         {
@@ -405,8 +407,8 @@ void update(real dt)
                 //add gravity
                 // forces[i][j][1] += Gravity * grid[i][j][2];
 
-                grid[i][j][0] += forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
-                grid[i][j][1] += forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
+                grid[i][j][0] += 10.f * forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
+                grid[i][j][1] += 10.f * forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
                 // if (forces[i][j][1] > 0.f)
                 // {
                 // std::cout << forces[i][j] << std::endl;
@@ -547,8 +549,8 @@ void update(real dt)
         // }
 
         //update particle velocities
-        p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
-        // p.v = v_PIC;
+        // p.v = (1 - alpha) * v_PIC + alpha * v_FLIP;
+        p.v = v_PIC;
         // std::cout << p.v << std::endl;
         // printf("P v: %f, %f\n", p.v[0], p.v[1]);
 

@@ -416,7 +416,7 @@ void mpm_solver::update(double dt)
                     double z = double(k) / n;
 
                     //added a sphere collider (hemisphere)
-                    Vec circleCenter = Vec(0.5, 0 + boundary, 0.f);
+                    Vec circleCenter = Vec(0.5, 0 + boundary, z);
                     double circleRadius = 0.1f;
                     double mu = 0.1;
 
@@ -424,9 +424,10 @@ void mpm_solver::update(double dt)
                     if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()) < circleRadius * circleRadius)//+ (z - circleCenter.z()) * (z - circleCenter.z()) )
                     {
 
-                        std::cout << "collide" << endl;
+//                        std::cout << "collide" << endl;
 //                        g.y() = 0.f;
                         Vec n = (Vec(x, y, z) - circleCenter).normalized();
+
                         Vec v = Vec(g.x(), g.y(), g.z());
                         double v_dot_n = v.dot(n);
                         if (v_dot_n < 0)
@@ -435,10 +436,14 @@ void mpm_solver::update(double dt)
                             double v_t_norm = pow(v_t.dot(v_t), 0.5);
                             if (v_t_norm > 0)
                             {
+                                std::cout << "in if statement" << endl;
                                 Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
                                 g.x() = v_prime.x();
                                 g.y() = v_prime.y();
                                 g.z() = v_prime.z();
+//                                g.x() = 0.0f;
+//                                g.y() = 0.0f;
+//                                g.z() = 0.0f;
 
                             }
                         }
