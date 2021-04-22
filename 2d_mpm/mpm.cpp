@@ -21,7 +21,7 @@ const int window_size = 800;
 const int n = 80;
 
 //number of particles per object
-const int num_particles = 500.f;
+const int num_particles = 1000.f;
 
 const real dt = 1e-4_f;
 const real frame_dt = 1e-3_f;
@@ -31,20 +31,22 @@ const real inv_dx = 1.0_f / dx;
 const real alpha = 0.05;
 
 // Snow material properties
-const auto particle_mass = 1.0f;
-const auto vol = 1.0_f; // Particle Volume
-const auto xi = 10.0_f; // Snow hardening factor
-const auto E = 1e4_f;   // Young's Modulus
-const auto nu = 0.2_f;  // Poisson ratio
+const real particle_mass = 1.0f;
+const real vol = 1.0_f; // Particle Volume
+const real xi = 10.0_f; // Snow hardening factor
+const real E = 1e4_f;   // Young's Modulus
+const real nu = 0.2_f;  // Poisson ratio
 const bool plastic = true;
 
 // Initial Lamé parameters
-const real mu_0 = E / (2 * (1 + nu));
-const real lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu));
+const real mu_0 = E / (2.0f * (1.0f + nu));
+const real lambda_0 = E * nu / ((1.0f + nu) * (1.0f - 2.0f * nu));
 
 //neighbor grid
-const int neighbor = 15; //[from -neighbor to neighbor]
+const int neighbor = 3; //[from -neighbor to neighbor]
 int iteration = 0;
+
+bool sphere_collision = true;
 
 struct Particle
 {
@@ -152,33 +154,35 @@ void collide(Vec coords, Vec &velocity)
     real mu = 0.1;
 
     //if inside the sphere...
-    if ((coords.x - circleCenter.x) * (coords.x - circleCenter.x) + (coords.y - circleCenter.y) * (coords.y - circleCenter.y) < circleRadius * circleRadius)
+    if (sphere_collision)
     {
-        Vec n = normalized(coords - circleCenter);
-        real v_dot_n = velocity.dot(n);
-        if (v_dot_n < 0)
-        { //section 8 body collision
-            Vec v_t = velocity - n * v_dot_n;
-            real v_t_norm = pow(v_t.dot(v_t), 0.5);
-            if (v_t_norm > 0)
-            {
-                Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
-                velocity = v_prime;
+        if ((coords.x - circleCenter.x) * (coords.x - circleCenter.x) + (coords.y - circleCenter.y) * (coords.y - circleCenter.y) < circleRadius * circleRadius)
+        {
+            Vec n = normalized(coords - circleCenter);
+            real v_dot_n = velocity.dot(n);
+            if (v_dot_n < 0)
+            { //section 8 body collision
+                Vec v_t = velocity - n * v_dot_n;
+                real v_t_norm = pow(v_t.dot(v_t), 0.5);
+                if (v_t_norm > 0)
+                {
+                    Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
+                    velocity = v_prime;
+                }
             }
         }
     }
+
     // Sticky boundary
-    else
+
+    if (coords.x < boundary || coords.x > 1 - boundary || coords.y > 1 - boundary)
     {
-        if (coords.x < boundary || coords.x > 1 - boundary || coords.y > 1 - boundary)
-        {
-            velocity = Vec(0.f, 0.f);
-        }
-        // Separate boundary
-        if (coords.y < boundary)
-        {
-            velocity[1] = std::max(0.0f, velocity[0]);
-        }
+        velocity = Vec(0.f, 0.f);
+    }
+    // Separate boundary
+    if (coords.y < boundary)
+    {
+        velocity[1] = std::max(0.0f, velocity[0]);
     }
 }
 
@@ -240,7 +244,7 @@ void initialize()
                     // h^3 = dx*dx*dx
                     // h^2 for 2d
                     // density is sum of grid masses multiplied by weight divided by vol/area of cell
-                    density += grid[curr_grid.x][curr_grid.y].z * N; // / (dx * dx);
+                    density += grid[curr_grid.x][curr_grid.y].z * N / (dx * dx);
                     // printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
                 }
             }
@@ -355,11 +359,15 @@ void update(real dt)
         real J_p = determinant(p.F_p);
         Mat stress;
 
-        real mu = mu_0 * exp(xi * (1 - J_p));
+        real mu = mu_0 * exp(xi * (1.0f - J_p));
 
-        real lambda = lambda_0 * exp(xi * (1 - J_p));
+        real lambda = lambda_0 * exp(xi * (1.0f - J_p));
 
-        stress = ((2.0f * mu)) * (p.F_e - Re) * transposed(p.F_e) + (lambda) * (J_e - 1) * (J_e * Mat(1)); // from tech report, but don't use J because we just multiply by it after from V_p_n
+        stress = ((2.0f * mu)) * (p.F_e - Re) * transposed(p.F_e) + (lambda) * (J_e - 1.0f) * (J_e * Mat(1.0f)); // from tech report, but don't use J because we just multiply by it after from V_p_n
+
+        // stress = stress * 1000.f;
+
+        // cout << stress << endl;
 
         for (int i = -neighbor; i < neighbor + 1; i++)
         {
@@ -373,6 +381,8 @@ void update(real dt)
                     Vec N = weight_gradient(fx);
                     // printf("curr coords, %d,%d", curr_grid.x, curr_grid.y);
                     Vector2f force_at_grid_by_particle = V_p_n * multiply_vec_transpose(stress, N); // equation 6
+                    // Vector2f force_at_grid_by_particle = multiply_vec_transpose(stress, N); // equation 6
+
                     // cout << V_p_n << endl;
 
                     forces[curr_grid.x][curr_grid.y] -= force_at_grid_by_particle;
@@ -395,8 +405,8 @@ void update(real dt)
                 //add gravity
                 // forces[i][j][1] += Gravity * grid[i][j][2];
 
-                grid[i][j][0] += 5.f * forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
-                grid[i][j][1] += 5.f * forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
+                grid[i][j][0] += forces[i][j][0] * (1.0f / grid[i][j][2]) * dt;
+                grid[i][j][1] += forces[i][j][1] * (1.0f / grid[i][j][2]) * dt;
                 // if (forces[i][j][1] > 0.f)
                 // {
                 // std::cout << forces[i][j] << std::endl;
@@ -415,7 +425,7 @@ void update(real dt)
             if (g[2] > 0)
             {
                 // Normalize by mass
-                // // g /= g[2];
+                // g /= g[2];
                 // Gravity
                 g += dt * Vector3(0, -200, 0);
 
@@ -448,27 +458,31 @@ void update(real dt)
                 { //check bounds 0 to n in both dirs
                     Vec fx = p.x * inv_dx - curr_grid.cast<real>();
                     Vec grid_velocity(grid[curr_grid.x][curr_grid.y].x, grid[curr_grid.x][curr_grid.y].y);
+
                     v_p_n_plus_1 += Mat::outer_product(grid_velocity, weight_gradient(fx));
+                    // cout << "weight grad: " << weight_gradient(fx) << endl;
+                    // cout << "v: " << grid_velocity << endl;
+                    // cout << "outer prod: " << Mat::outer_product(grid_velocity, weight_gradient(fx)) << endl;
                 }
             }
         }
 
         //update force
 
-        // std::cout << v_p_n_plus_1 << std::endl;
+        // std::cout << "v p n plus 1: " << dt * v_p_n_plus_1 << std::endl;
         //update elastic compoenent - before we do plasticity the elastic component gets all of the F
-        p.F_e = (Mat(1) + dt * v_p_n_plus_1) * p.F_e;
-        // cout << p.F_e << endl;
+        p.F_e = (Mat(1.0f) + dt * v_p_n_plus_1) * p.F_e;
+        // cout << "p.fe pre update" << p.F_e << endl;
         // p.F_e = (Mat(1)) * p.F_e;
         // printf("p.fe Before: %f\n", determinant(p.F_e));
 
         //plastic component - compiles but is does not change sim.
-        Mat U_p, Sig_hat_p, V_transpose_p;
-        svd(p.F_e, U_p, Sig_hat_p, V_transpose_p); //compute singular value decomposition
+        Mat U_p, Sig_hat_p, V_p;
+        svd(p.F_e, U_p, Sig_hat_p, V_p); //compute singular value decomposition
         real ten = 10;
-        // real theta_c = 2.5f * pow(ten, -2.0); //move up later
+        real theta_c = 2.5f * pow(ten, -2.0); //move up later
         real theta_s = 7.5f * pow(ten, -3.0);
-        real theta_c = 1.2f * pow(ten, -2.0); //move up later
+        // real theta_c = 6.f * pow(ten, -2.0); //move up later
         // real theta_s = 5.f * pow(ten, -3.0);
 
         Mat Sig_p;
@@ -481,8 +495,10 @@ void update(real dt)
         // std::cout << "414: " << (Sig_p) << std::endl;
         p.F = p.F_e * p.F_p;
 
-        p.F_e = U_p * Sig_p * V_transpose_p;
-        p.F_p = transposed(V_transpose_p) * inversed(Sig_p) * transposed(U_p) * p.F; //
+        p.F_e = U_p * Sig_p * transposed(V_p);
+        p.F_p = V_p * inversed(Sig_p) * transposed(U_p) * p.F; //
+
+        // cout << "p.fe post update" << p.F_e << endl;
 
         // cout << p.F << endl;
 
@@ -577,7 +593,7 @@ getNextLineAndSplitIntoTokens(std::istream &str)
     return result;
 }
 
-void add_from_csv(char *infile_path, Vec center, int c)
+void add_from_csv(const char *infile_path, Vec center, int c, float scale = 1.0f)
 {
     std::ifstream infile(infile_path);
 
@@ -586,10 +602,22 @@ void add_from_csv(char *infile_path, Vec center, int c)
     while (split_line.size() > 1)
     {
         real x_pos = std::stof(split_line[0].c_str()) / 50.f;
-        real y_pos = std::stof(split_line[1].c_str()) / 50.f - 0.5f;                 //change to split_line[2] to get a bird's eye view cow :o
-        particles.push_back(Particle(Vec(x_pos + center[0], y_pos + center[1]), c)); //using x and y coordinates for 2d
+        real y_pos = std::stof(split_line[1].c_str()) / 50.f; //change to split_line[2] to get a bird's eye view cow :o
+
+        Vec pos = Vec(scale * x_pos + center[0], scale * y_pos + center[1]) + (0.05f * Vec::rand());
+        // pos += 0.05 * Vec::rand();
+
+        particles.push_back(Particle(pos, c)); //using x and y coordinates for 2d
         split_line = getNextLineAndSplitIntoTokens(infile);
     }
+}
+
+void add_snowman()
+{
+    std::string snow_path("/Users/Adam/Desktop/cs2240/snow/csv/sphere_csv.csv");
+    add_from_csv(snow_path.c_str(), Vec(0.55, 0.75), 0xFFFAFA, 2.5);
+    add_from_csv(snow_path.c_str(), Vec(0.52, 0.62), 0xFFFAFA, 3.5);
+    // add_from_csv(snow_path.c_str(), Vec(0.55, 0.45), 0xFFFAFA, 4.5);
 }
 
 int main(int argc, char *argv[])
@@ -607,7 +635,15 @@ int main(int argc, char *argv[])
     else
     {
         assert(argc == 2);
-        add_from_csv(argv[1], Vec(0.55, 0.85), 0xF2B134);
+        std::string snowman("snowman");
+        // if (argv[1].equals(snowman.c_str()))
+        // {
+        add_snowman();
+        // }
+        // else
+        // {
+        //     add_from_csv(argv[1], Vec(0.55, 0.85), 0xFFFAFA);
+        // }
     }
 
     int frame = 0;
@@ -620,6 +656,9 @@ int main(int argc, char *argv[])
     {
         // Advance simulation
         update(dt);
+        // update(dt);
+
+        // exit(0);
 
         // Visualize frame
         if (step % int(frame_dt / dt) == 0)
