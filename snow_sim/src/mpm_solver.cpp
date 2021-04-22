@@ -9,6 +9,11 @@
 using namespace Eigen;
 using namespace std;
 
+bool sphere_collision = true;
+double force_factor = 10.0f;
+bool render = true;
+bool write = false;
+
 static double weight(double x)
 {
     double abs_x = abs(x);
@@ -81,9 +86,59 @@ static void polar_decomp(const Mat m, Mat& R, Mat& S){
 
 }
 
+void collide(Vec coords, Vec &velocity){
+    // Vec out_vel(0.0f, 0.0f);
+
+        //copied from taichi example
+        // boundary thickness
+        double boundary = 0.25;
+
+        //added a sphere collider (hemisphere)
+        //initial z coordinate to be z coordinate of the value that was passed in
+        Vec circleCenter = Vec(0.5, 0 + boundary, coords.z());
+        double circleRadius = 0.1f;
+        double mu = 0.1;
+
+        //if inside the sphere...
+        if (sphere_collision)
+        {
+            if ((coords.x() - circleCenter.x()) * (coords.x() - circleCenter.x()) + (coords.y() - circleCenter.y()) * (coords.y() - circleCenter.y()) < circleRadius * circleRadius)
+            {
+                Vec n = (coords - circleCenter).normalized();
+                double v_dot_n = velocity.dot(n);
+                if (v_dot_n < 0)
+                { //section 8 body collision
+                    Vec v_t = velocity - n * v_dot_n;
+                    double v_t_norm = pow(v_t.dot(v_t), 0.5);
+                    if (v_t_norm > 0)
+                    {
+                        Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
+                        velocity = v_prime;
+                    }
+                }
+            }
+        }
+
+//        // Sticky boundary
+
+//        if (coords.x < boundary || coords.x > 1 - boundary || coords.y > 1 - boundary)
+//        {
+//            velocity = Vec(0.f, 0.f);
+//        }
+        // Separate boundary
+        if (coords.y() < boundary)
+        {
+            velocity[0] = 0.0f;
+            velocity[1] = std::max(0.0f, (float)velocity.y());
+            velocity[2] = 0.0f;
+        }
+}
+
 mpm_solver::mpm_solver()
 {
 }
+
+
 
 
 
@@ -94,25 +149,27 @@ void mpm_solver::initialize()
 
     //create shapes
     add_object(Vec(0.55, 0.45, 0.5f), 0xFFFAFA);
-//    add_object(Vec(0.45, 0.65, 0.f), 0xFFFAFA);
-//    add_object(Vec(0.55, 0.85, 0.f), 0xFFFAFA);
+    add_object(Vec(0.45, 0.65, 0.5f), 0xFFFAFA);
+    add_object(Vec(0.55, 0.85, 0.5f), 0xFFFAFA);
 
     std::cout << "Number of initialized particles: " << particles.size() << std::endl;
 
-    //initialize particle weights and set mass of grid
+    memset(grid, 0, sizeof(grid));
+
+    /**************************************/
+    /******** INITIALIZE GRID MASS ********/
+    /**************************************/
     for (auto &p : particles)
     {
-
-        // element-wise floor
         Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i <= neighbor; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j <= neighbor; j++)
             {
-                for (int k = -2; k < 3; k++)
+                for (int k = -neighbor; k <= neighbor; k++)
                 {
                     Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n  && curr_grid.z() >= 0 && curr_grid.z() <= n)
@@ -120,45 +177,46 @@ void mpm_solver::initialize()
                         //p.x = [0,1], base_coord = [0,n], fx is distance from particle position to nearest grid coordinate
 
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
+
                         //compute weight
-
                         double N = weight(fx[0]) * weight(fx[1]) * weight(fx[2]);
-
-                        // printf("N: %f\n", N);
 
                         //add mass to grid
                         grid[curr_grid[0]][curr_grid[1]][curr_grid[2]].w() += N * particle_mass;    //changed to w
-                        // printf("mass: %f\n", grid[curr_grid[0]][curr_grid[1]].z);
+
                     }
                 }
             }
         }
     }
-    //initializing particle volumes based on density of grid
+
+
+    /**************************************/
+    /***** INITIALIZE PARTICLE VOLUME *****/
+    /**************************************/
     for (auto &p : particles)
     {
-        double density = 0;
+        double density = 0.0f;
         Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i <= neighbor; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j <= neighbor; j++)
             {
-                for (int k = -2; k < 3; k++)
+                for (int k = -neighbor; k <= neighbor; k++)
                 {
                     Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
                         //p.x = [0,1], base_coord = [0,n], fx is distance from particle position to nearest grid coordinate
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
-                        //compute weight
 
+                        //compute weight
                         double N = weight(fx[0]) * weight(fx[1]) * weight(fx[2]);
 
                         // h^3 = dx*dx*dx
                         // h^2 for 2d
                         // density is sum of grid masses multiplied by weight divided by vol/area of cell
-                        density += grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].w() * N / (dx * dx * dx);
-                        // printf("curr grid mass: %f\n", grid[curr_grid.x][curr_grid.y].z);
+                        density += grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].w() * N; // / (dx * dx * dx);
                     }
                 }
             }
@@ -168,63 +226,59 @@ void mpm_solver::initialize()
         // printf("volume: %f\n", p.vol);
     }
 
-    //for graphical rendering using shaders
-    std::vector<Vector3f> vertices;
-    std::vector<Vector3i> faces;
-    int j = 0;
-    //vertices of tetrahedron centered at origin with side length ~=offset
-    float offset = 0.01;
-    Vector3f v_1 = Vector3f(offset, offset, offset);
-    Vector3f v_2 = Vector3f(-offset, -offset, offset);
-    Vector3f v_3 = Vector3f(-offset, offset, -offset);
-    Vector3f v_4 = Vector3f(offset, -offset, -offset);
 
-    for(int i = 0; i < particles.size(); i++){
-        Vec p = particles[i].x;
-        Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
+    /**************************************/
+    /************ RENNDERING **************/
+    /**************************************/
+    if(render){
+        std::vector<Vector3f> vertices;
+        std::vector<Vector3i> faces;
+        int j = 0;
+        //vertices of tetrahedron centered at origin with side length ~=offset
+        float offset = 0.01;
+        Vector3f v_1 = Vector3f(offset, offset, offset);
+        Vector3f v_2 = Vector3f(-offset, -offset, offset);
+        Vector3f v_3 = Vector3f(-offset, offset, -offset);
+        Vector3f v_4 = Vector3f(offset, -offset, -offset);
 
-        vertices.push_back(v_1+pos);
-        vertices.push_back(v_2+pos);
-        vertices.push_back(v_3+pos);
-        vertices.push_back(v_4+pos);
+        for(int i = 0; i < particles.size(); i++){
+            Vec p = particles[i].x;
+            Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
 
-        Vector4i t = Vector4i(j, j+1, j+2, j+3);
-        Vector3i f_1 = Vector3i(t[3], t[1], t[2]); //opposite t[0]
-        Vector3i f_2 = Vector3i(t[2], t[0], t[3]); //opposite t[1]
-        Vector3i f_3 = Vector3i(t[3], t[0], t[1]); //opposite t[2]
-        Vector3i f_4 = Vector3i(t[1], t[0], t[2]); //opposite t[3]
+            vertices.push_back(v_1+pos);
+            vertices.push_back(v_2+pos);
+            vertices.push_back(v_3+pos);
+            vertices.push_back(v_4+pos);
 
-        faces.emplace_back(f_1);
-        faces.emplace_back(f_2);
-        faces.emplace_back(f_3);
-        faces.emplace_back(f_4);
+            Vector4i t = Vector4i(j, j+1, j+2, j+3);
+            Vector3i f_1 = Vector3i(t[3], t[1], t[2]); //opposite t[0]
+            Vector3i f_2 = Vector3i(t[2], t[0], t[3]); //opposite t[1]
+            Vector3i f_3 = Vector3i(t[3], t[0], t[1]); //opposite t[2]
+            Vector3i f_4 = Vector3i(t[1], t[0], t[2]); //opposite t[3]
 
-        j+=4;
+            faces.emplace_back(f_1);
+            faces.emplace_back(f_2);
+            faces.emplace_back(f_3);
+            faces.emplace_back(f_4);
+
+            j+=4;
+        }
+        m_shape.init(vertices, faces);
     }
-    m_shape.init(vertices, faces);
 }
 
 void mpm_solver::update(double dt)
 {
 
 //    std::cout<<"update"<<std::endl;
-    //store old grid velocities
-    Vec oldVelocities[n + 1][n + 1][n + 1];
-    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j <= n; j++)
-        {
-            for (int k = 0; k <= n; k++)
-            {
-                auto &g = grid[i][j][k];
-                oldVelocities[i][j][k] = Vec(g.x(), g.y(), g.z()); //store old velocity
-            }
-        }
-    }
 
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
 
+
+    /**************************************/
+    /******* TRANSFER MASS TO GRID ********/
+    /**************************************/
     for (auto &p : particles)
     {
         //transfer mass
@@ -233,11 +287,11 @@ void mpm_solver::update(double dt)
 
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i <= neighbor; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j <= neighbor; j++)
             {
-                for (int k = -2; k < 3; k++)
+                for (int k = -neighbor; k <= neighbor; k++)
                 {
                     Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
@@ -245,8 +299,8 @@ void mpm_solver::update(double dt)
                         //p.x = [0,1], base_coord = [0,n], fx is distance from particle position to nearest grid coordinate
 
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
-                        //compute weight
 
+                        //compute weight
                         double N = weight(fx[0]) * weight(fx[1]) * weight(fx[2]);
 
                         //add mass to grid
@@ -257,18 +311,24 @@ void mpm_solver::update(double dt)
         }
     }
 //    std::cout << "transferred mass\n" << std::endl;
+
+
+
+    /**************************************/
+    /******* TRANSFER VEL TO GRID ********/
+    /**************************************/
+
     //step one of paper. transfering velocity
     for (auto &p : particles)
     {
         Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
-//        loop through neighboring grids [-2,2]
 //        add velocity  to all neighboring grid cells
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i <= neighbor; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j <= neighbor; j++)
             {
-                for (int k = -2; k < 3; k++)
+                for (int k = -neighbor; k <= neighbor; k++)
                 {
                     Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
@@ -290,67 +350,80 @@ void mpm_solver::update(double dt)
 //    std::cout << "step 1\n" << std::endl;
 
 
-    //data structure to store grid forces
-    Vec forces[n + 1][n + 1][n + 1]; //same dimensions as grid
+
+    /**************************************/
+    /******** STORE OLD VELOCITIES ********/
+    /**************************************/
+    Vec oldVelocities[n + 1][n + 1][n + 1];
     for (int i = 0; i <= n; i++)
     {
         for (int j = 0; j <= n; j++)
         {
             for (int k = 0; k <= n; k++)
             {
-                forces[i][j][k] = Vec(0.f, 0.f, 0.f);
+                auto &g = grid[i][j][k];
+                oldVelocities[i][j][k] = Vec(g.x(), g.y(), g.z()); //store old velocity
             }
         }
     }
-//    //compute forces
+
+
+    //data structure to store grid forces
+    Vec forces[n + 1][n + 1][n + 1]; //same dimensions as grid
+    std::memset(forces, 0, sizeof(forces)); //should be the same as looping
+
+//    for (int i = 0; i <= n; i++)
+//    {
+//        for (int j = 0; j <= n; j++)
+//        {
+//            for (int k = 0; k <= n; k++)
+//            {
+//                forces[i][j][k] = Vec(0.f, 0.f, 0.f);
+//            }
+//        }
+//    }
+
+
+    /**************************************/
+    /********* COMPUTE GRID FORCES ********/
+    /**************************************/
     for (auto &p : particles)
     {
-        //loop through neighbourhood [-2, 2]
+
         Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
-        for (int i = -2; i < 3; i++)
-        {
-            for (int j = -2; j < 3; j++)
-            {
-                for (int k = -2; k < 3; k++)
-                {
+        double V_p_n = p.vol; //page 6
 
+        Mat Re;
+        Mat Se;
+        polar_decomp(p.F_e, Re, Se);
+
+        double J_e = p.F_e.determinant();
+        double J = p.F.determinant();
+        double J_p = p.F_p.determinant();
+        Mat stress;
+
+        double mu = mu_0 * exp(xi * (1.0f - J_p));
+
+        double lambda = lambda_0 * exp(xi * (1.0f - J_p));
+
+        stress = (2.0f * mu) * (p.F_e - Re) * p.F_e.transpose() + lambda * (J_e - 1) * (J_e * Mat(MatrixXd::Identity(3, 3))); // above equation 6
+
+        //loop through neighbourhood [-2, 2]
+        for (int i = -neighbor; i <= neighbor; i++)
+        {
+            for (int j = -neighbor; j <= neighbor; j++)
+            {
+                for (int k = -neighbor; k <= neighbor; k++)
+                {
                     Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
-                        double V_p_n = p.F.determinant() * p.vol; //page 6
-                        Mat F_hat_E_p = p.F_e;                 // equation 4 (x_hat = x_i)
-
-                        Mat Re;
-                        Mat Se;
-                        polar_decomp(p.F_e, Re, Se);
-
-                        double J_e = p.F_e.determinant();
-                        double J = p.F.determinant();
-                        double J_p = p.F_p.determinant();
-                        Mat stress;
-                        if (J != 0.0f)
-                        {
-                            // printf("line 315");
-                            double mu = mu_0 * exp(xi * (1 - J_p));
-                            double lambda = lambda_0 * exp(xi * (1 - J_p));
-                            stress = ((2.0f * mu) / J) * (p.F_e - Re) * p.F_e.transpose() + (lambda * 1.0f / J) * (J_e - 1) * (J_e * Mat(MatrixXd::Identity(3, 3))); // above equation 6
-                        }
-                        else
-                        {
-                            stress = Mat();
-                        }
-
                         Vec N = weight_gradient(fx);
                         // printf("curr coords, %d,%d", curr_grid.x, curr_grid.y);
                         Vec force_at_grid_by_particle = Vec(stress*N)*V_p_n; // equation 6
 
-                        double epsilon = 1e-4f;
-                        // if (abs(force_at_grid_by_particle[1]) > epsilon)
-                        // {
-                        //     printf("force: %f, %f\n", force_at_grid_by_particle[0], force_at_grid_by_particle[1]);
-                        // }
                         forces[curr_grid.x()][curr_grid.y()][curr_grid.z()] += force_at_grid_by_particle;
                     }
                 }
@@ -358,6 +431,13 @@ void mpm_solver::update(double dt)
         }
     }
 //    std::cout << "compute forces\n" << std::endl;
+
+
+
+
+    /**************************************/
+    /******* UPDATE GRID VELOCITIES *******/
+    /**************************************/
 
     //Step 4
     for (int i = 0; i <= n; i++)
@@ -368,16 +448,17 @@ void mpm_solver::update(double dt)
             {
                 if (grid[i][j][k].w() > 0.f)
                 {
-                    grid[i][j][k].x() += forces[i][j][k].x() * (1.0f / grid[i][j][k].w()) * dt;
-                    grid[i][j][k].y() += forces[i][j][k].y() * (1.0f / grid[i][j][k].w()) * dt;
-                    grid[i][j][k].z() += forces[i][j][k].z() * (1.0f / grid[i][j][k].w()) * dt;
+                    grid[i][j][k].x() += force_factor*forces[i][j][k].x() * (1.0f / grid[i][j][k].w()) * dt;
+                    grid[i][j][k].y() += force_factor*forces[i][j][k].y() * (1.0f / grid[i][j][k].w()) * dt;
+                    grid[i][j][k].z() += force_factor*forces[i][j][k].z() * (1.0f / grid[i][j][k].w()) * dt;
                 }
             }
         }
     }
 
-
-    // For all grid nodes: GRAVITY
+    /**************************************/
+    /********* ADD GRAVITY TO GRID ********/
+    /**************************************/
     for (int i = 0; i <= n; i++)
     {
         for (int j = 0; j <= n; j++)
@@ -385,119 +466,61 @@ void mpm_solver::update(double dt)
             for (int k = 0; k <= n; k++)
             {
                 auto &g = grid[i][j][k];
-//                auto &f = forces[i][j][k];
-                // No need for epsilon here
                 if (g[3] > 0)   //changed to w
                 {
-
-//                    /////gravity with momentum with conservation
-//                    float mass_inverse = 1.0f/ g[3];
-//                    g[0]*=mass_inverse;
-//                    g[1]*=mass_inverse;
-//                    g[1]*=mass_inverse;
-
-
-
-
-                    ///
-
-
-                    // Normalize by mass
                     // g /= g[2];
                     // Gravity
-                    g += dt * Vector4d(0, -20000, 0,0);   //not sure
+                    g += dt * Vector4d(0, -20000, 0, 0);   //not sure
 
-                    //copied from taichi example
-                    // boundary thickness
-                    double boundary = 0.25;
                     // Node coordinates
                     double x = double(i) / n;
                     double y = double(j) / n;
                     double z = double(k) / n;
 
-                    //added a sphere collider (hemisphere)
-                    Vec circleCenter = Vec(0.5, 0 + boundary, z);
-                    double circleRadius = 0.1f;
-                    double mu = 0.1;
+                    Vec out_vel = Vec(g.x(), g.y(), g.z());
+                    collide(Vec(x, y, z), out_vel);
 
-                    //if inside the sphere...
-                    if ((x - circleCenter.x()) * (x - circleCenter.x()) + (y - circleCenter.y()) * (y - circleCenter.y()) < circleRadius * circleRadius)//+ (z - circleCenter.z()) * (z - circleCenter.z()) )
-                    {
-
-//                        std::cout << "collide" << endl;
-//                        g.y() = 0.f;
-                        Vec n = (Vec(x, y, z) - circleCenter).normalized();
-
-                        Vec v = Vec(g.x(), g.y(), g.z());
-                        double v_dot_n = v.dot(n);
-                        if (v_dot_n < 0)
-                        { //section 8 body collision
-                            Vec v_t = v - n * v_dot_n;
-                            double v_t_norm = pow(v_t.dot(v_t), 0.5);
-                            if (v_t_norm > 0)
-                            {
-                                std::cout << "in if statement" << endl;
-                                Vec v_prime = v_t + mu * v_dot_n * v_t / v_t_norm;
-                                g.x() = v_prime.x();
-                                g.y() = v_prime.y();
-                                g.z() = v_prime.z();
-//                                g.x() = 0.0f;
-//                                g.y() = 0.0f;
-//                                g.z() = 0.0f;
-
-                            }
-                        }
-                    }
-//                     Sticky boundary
-//                    if (x < boundary || x > 1 - boundary || y > 1 - boundary)
-//                    {
-//                        g = Vector4d(0);
-//                    }
-                    // Separate boundary
-                    if (y < boundary)
-                    {
-                        g[1] = std::max(0.0, g[1]);
-                    }
+                    g.x() = out_vel.x();
+                    g.y() = out_vel.y();
+                    g.z() = out_vel.z();
                 }
             }
         }
     }
+//   std::cout << "added gravity\n" << std::endl;
 
-////    std::cout << "added gravity\n" << std::endl;
 
+
+    /**************************************/
+    /**** UPDATE DEFORMATION GRADIENT *****/
+    /**************************************/
     for (auto &p : particles)
     {
         Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
-        Mat v_p_n_plus_1;
-        for (int i = -2; i < 3; i++)
+        Mat v_p_n_plus_1 = Matrix3d::Zero();
+        for (int i = -neighbor; i <= neighbor; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j <= neighbor; j++)
             {
-                for (int k = -2; k < 3; k++)
+                for (int k = -neighbor; k <= neighbor; k++)
                 {
-
                     Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
+
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
                         Vec grid_velocity(grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].x(), grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].y(), grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].z());
-                        v_p_n_plus_1 += grid_velocity*weight_gradient(fx).transpose();
+                        v_p_n_plus_1 += grid_velocity*(weight_gradient(fx).transpose());
                     }
                 }
             }
         }
 
-        //update force
-
-
 //        update elastic compoenent - before we do plasticity the elastic component gets all of the F
         p.F_e = (Mat(MatrixXd::Identity(3, 3)) + dt * v_p_n_plus_1) * p.F_e;
-//         printf("p.fe Before: %f\n", determinant(p.F_e));
 
         //plastic component - compiles but is does not change sim.
-        Mat F_hat_P_p = p.F_p; // Section 7
-
         JacobiSVD<MatrixXd> svd(p.F_e, ComputeThinU | ComputeThinV); //compute singular value decomposition
         Mat U_p = svd.matrixU();
         Mat Sig_hat_p = svd.singularValues().asDiagonal();
@@ -515,26 +538,26 @@ void mpm_solver::update(double dt)
 
         Mat Sig_p;
         Sig_p = Sig_hat_p;
-        //    std::cout<<"409: " <<(Sig_p)<<std::endl;
 
         Sig_p.col(0)[0] = clamp(Sig_p.col(0)[0], 1 - theta_c, 1 + theta_s); //clamp
         Sig_p.col(1)[1] = clamp(Sig_p.col(1)[1], 1 - theta_c, 1 + theta_s);
 
-//         std::cout<<"414: "<<(Sig_p)<<std::endl;
+        p.F = p.F_e * p.F_p;
+
         p.F_e = U_p * Sig_p * V_transpose_p;
         p.F_p = V_transpose_p.transpose() * Sig_p.inverse() * U_p.transpose() * p.F; //
-        p.F = p.F_e * p.F_p;
+
 
 
         //update particle velocities
         Vec v_PIC(0, 0, 0);
         Vec vfLIP = p.v;
         // printf("initial flip: %f\n", p.v[1]);
-        for (int i = -2; i < 3; i++)
+        for (int i = -neighbor; i <= neighbor; i++)
         {
-            for (int j = -2; j < 3; j++)
+            for (int j = -neighbor; j <= neighbor; j++)
             {
-                for (int k = -2; k < 3; k++)
+                for (int k = -neighbor; k <= neighbor; k++)
                 {
 
                 Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
@@ -555,13 +578,12 @@ void mpm_solver::update(double dt)
                 }
             }
         }
-        double epsilon = 1e-4;
 
         //update particle velocities
 //        p.v = (1 - alpha) * v_PIC + alpha * vfLIP;
         p.v = v_PIC;
-        // printf("P v: %f, %f\n", p.v[0], p.v[1]);
-//        cout<<p.v<<endl;
+//        std::cout << p.v << std::endl;
+
         //update particle positions
         p.x += p.v * dt;
 //        std::cout << p.x << std::endl;
@@ -570,26 +592,36 @@ void mpm_solver::update(double dt)
 
 
 
-    //for graphical rendering using shaders
-    std::vector<Vector3f> vertices;
-    //vertices of tetrahedron centered at origin with side length ~=offset
-    float offset = 0.01;
-    Vector3f v_1 = Vector3f(offset, offset, offset);
-    Vector3f v_2 = Vector3f(-offset, -offset, offset);
-    Vector3f v_3 = Vector3f(-offset, offset, -offset);
-    Vector3f v_4 = Vector3f(offset, -offset, -offset);
 
-    for(int i = 0; i < particles.size(); i++){
-        Vector3d p = particles[i].x;
-//        cout << p << endl;
-        Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
+    /**************************************/
+    /************ RENNDERING **************/
+    /**************************************/
+    if(render){
+        //for graphical rendering using shaders
+        std::vector<Vector3f> vertices;
+        //vertices of tetrahedron centered at origin with side length ~=offset
+        float offset = 0.01;
+        Vector3f v_1 = Vector3f(offset, offset, offset);
+        Vector3f v_2 = Vector3f(-offset, -offset, offset);
+        Vector3f v_3 = Vector3f(-offset, offset, -offset);
+        Vector3f v_4 = Vector3f(offset, -offset, -offset);
 
-        vertices.push_back(v_1+pos);
-        vertices.push_back(v_2+pos);
-        vertices.push_back(v_3+pos);
-        vertices.push_back(v_4+pos);
+        for(int i = 0; i < particles.size(); i++){
+            Vector3d p = particles[i].x;
+    //        cout << p << endl;
+            Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
+
+            vertices.push_back(v_1+pos);
+            vertices.push_back(v_2+pos);
+            vertices.push_back(v_3+pos);
+            vertices.push_back(v_4+pos);
+        }
+        m_shape.setVertices(vertices);
     }
-    m_shape.setVertices(vertices);
+
+    if(write){
+        write_to_CSV();
+    }
 }
 
 
@@ -599,7 +631,7 @@ void mpm_solver::add_object(Vec center, int c)
     // Randomly sample num_particles particles in the square
     for (int i = 0; i < num_particles; i++)
     {
-        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, 0) * 2.0f - Vec(1, 1, 1)) * 0.08 + center, c));
+        particles.push_back(Particle((Vec(rand()/(float)RAND_MAX, rand()/(float)RAND_MAX, rand()/(float)RAND_MAX) * 2.0f - Vec(1, 1, 1)) * 0.08 + center, c));
     }
 }
 
@@ -646,6 +678,18 @@ void mpm_solver::add_from_csv(char *infile_path, Vec center, int c)
         particles.push_back(Particle(Vec(x_pos + center[0], y_pos + center[1], z_pos + center[2]), c)); //using x and y coordinates for 2d
         split_line = getNextLineAndSplitIntoTokens(infile);
     }
+}
+
+void mpm_solver::write_to_CSV(){
+    std::ofstream myFile;
+    myFile.open("squares/square" + to_string(iteration)+".csv");
+
+    for (auto &p : particles)
+    {
+        cout << "writinng " << endl;
+        myFile << p.x.x() << ", " << p.x.y() << ", " << p.x.z() << "\n";
+    }
+    myFile.close();
 }
 
 int mpm_solver::run(int argc, char* argv[])

@@ -84,8 +84,8 @@ private:
     const bool plastic = true;
 
     // Initial Lamé parameters
-    const double mu_0 = E / (2 * (1 + nu));
-    const double lambda_0 = E * nu / ((1 + nu) * (1 - 2 * nu));
+    const double mu_0 = E / (2.0f * (1.0f + nu));
+    const double lambda_0 = E * nu / ((1.0f + nu) * (1.0f - 2.0f * nu));
 
     //neighbor grid
     const int neighbor = 2;
@@ -100,6 +100,7 @@ private:
 
 
     void add_object(Vec center, int c);
+    void write_to_CSV();
 };
 
 #endif // MPM_SOLVER_H
