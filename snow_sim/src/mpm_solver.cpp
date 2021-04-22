@@ -12,7 +12,7 @@ using namespace std;
 bool sphere_collision = true;
 double force_factor = 10.0f;
 bool render = true;
-bool write = false;
+bool write = true;
 
 static double weight(double x)
 {
@@ -621,6 +621,7 @@ void mpm_solver::update(double dt)
 
     if(write){
         write_to_CSV();
+        iteration++;
     }
 }
 
@@ -682,7 +683,7 @@ void mpm_solver::add_from_csv(char *infile_path, Vec center, int c)
 
 void mpm_solver::write_to_CSV(){
     std::ofstream myFile;
-    myFile.open("squares/square" + to_string(iteration)+".csv");
+    myFile.open("/Users/yuna.hiraide/Desktop/snow_maya/square" + to_string(iteration)+".csv");
 
     for (auto &p : particles)
     {
