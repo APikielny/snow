@@ -8,7 +8,7 @@
 bool sphere_collision = true;
 double force_factor = 10.0f;
 bool render = true;
-bool write = true;
+bool write = false;
 
 static double weight(double x)
 {
@@ -350,34 +350,37 @@ void mpm_solver::update(double dt)
     /**************************************/
     /******** STORE OLD VELOCITIES ********/
     /**************************************/
-    Vec oldVelocities[n + 1][n + 1][n + 1];
-    for (int i = 0; i <= n; i++)
-    {
-        for (int j = 0; j <= n; j++)
-        {
-            for (int k = 0; k <= n; k++)
-            {
-                auto &g = grid[i][j][k];
-                oldVelocities[i][j][k] = Vec(g.x(), g.y(), g.z()); //store old velocity
-            }
-        }
-    }
-
-
-    //data structure to store grid forces
-    Vec forces[n + 1][n + 1][n + 1]; //same dimensions as grid
-    std::memset(forces, 0, sizeof(forces)); //should be the same as looping
-
+    int x = n + 1;
+//    Vec oldVelocities[x][x][x];
 //    for (int i = 0; i <= n; i++)
 //    {
 //        for (int j = 0; j <= n; j++)
 //        {
 //            for (int k = 0; k <= n; k++)
 //            {
-//                forces[i][j][k] = Vec(0.f, 0.f, 0.f);
+//                auto &g = grid[i][j][k];
+//                oldVelocities[i][j][k] = Vec(g.x(), g.y(), g.z()); //store old velocity
 //            }
 //        }
 //    }
+
+
+    //data structure to store grid forces
+//    std::cout << "hello world" <<std::endl;
+    Vec forces[x][x][x]; //same dimensions as grid
+
+    std::memset(forces, 0, sizeof(forces)); //should be the same as looping
+
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            for (int k = 0; k <= n; k++)
+            {
+                forces[i][j][k] = Vec(0.f, 0.f, 0.f);
+            }
+        }
+    }
 
 
     /**************************************/
@@ -567,9 +570,9 @@ void mpm_solver::update(double dt)
                     v_PIC.z() += grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].z() * N;
 
                     //update FLIP velocity
-                    vfLIP.x() += (grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].x() - oldVelocities[curr_grid.x()][curr_grid.y()][curr_grid.z()].x()) * N;
-                    vfLIP.y() += (grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].y() - oldVelocities[curr_grid.x()][curr_grid.y()][curr_grid.z()].y()) * N;
-                    vfLIP.z() += (grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].z() - oldVelocities[curr_grid.x()][curr_grid.y()][curr_grid.z()].z()) * N;
+//                    vfLIP.x() += (grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].x() - oldVelocities[curr_grid.x()][curr_grid.y()][curr_grid.z()].x()) * N;
+//                    vfLIP.y() += (grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].y() - oldVelocities[curr_grid.x()][curr_grid.y()][curr_grid.z()].y()) * N;
+//                    vfLIP.z() += (grid[curr_grid.x()][curr_grid.y()][curr_grid.z()].z() - oldVelocities[curr_grid.x()][curr_grid.y()][curr_grid.z()].z()) * N;
                 }
                 }
             }
@@ -590,7 +593,7 @@ void mpm_solver::update(double dt)
 
 
     /**************************************/
-    /************ RENNDERING **************/
+    /************ RENDERING **************/
     /**************************************/
     if(render){
         //for graphical rendering using shaders

@@ -1042,7 +1042,9 @@ compiler_clean: compiler_rcc_clean compiler_moc_predefs_clean compiler_moc_heade
 
 ####### Compile
 
-debug/glew.o: ../snow_sim/libs/glew-1.10.0/src/glew.c ../snow_sim/libs/glew-1.10.0/include/GL/glew.h
+debug/glew.o: ../snow_sim/libs/glew-1.10.0/src/glew.c ../snow_sim/libs/glew-1.10.0/include/GL/glew.h \
+		../snow_sim/libs/glew-1.10.0/include/GL/wglew.h \
+		../snow_sim/libs/glew-1.10.0/include/GL/glxew.h
 	$(CC) -c $(CFLAGS) $(INCPATH) -o debug\glew.o ..\snow_sim\libs\glew-1.10.0\src\glew.c
 
 debug/main.o: ../snow_sim/src/main.cpp C:/Qt/5.15.2/mingw81_64/include/QtWidgets/QApplication \
