@@ -7,7 +7,6 @@
 
 #include <iostream>
 
-using namespace std;
 
 View::View(QWidget *parent) : QGLWidget(ViewFormat(), parent),
     m_window(parent->parentWidget()),

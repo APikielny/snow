@@ -10,8 +10,6 @@
 #include <QTextStream>
 #include <QRegularExpression>
 
-using namespace Eigen;
-
 bool MeshLoader::loadTetMesh(const std::string &filepath, std::vector<Eigen::Vector3f> &vertices, std::vector<Eigen::Vector4i> &tets)
 {
     QString qpath = QString::fromStdString(filepath);

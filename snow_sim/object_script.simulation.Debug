@@ -1,0 +1,16 @@
+debug/glew.o
+debug/main.o
+debug/mainwindow.o
+debug/mpm_solver.o
+debug/vdb_writer.o
+debug/view.o
+debug/viewformat.o
+debug/Shader.o
+debug/GraphicsDebug.o
+debug/simulation.o
+debug/shape.o
+debug/camera.o
+debug/MeshLoader.o
+debug/qrc_shaders.o
+debug/moc_mainwindow.o
+debug/moc_view.o

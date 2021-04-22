@@ -5,11 +5,8 @@
 #include <Eigen/StdVector>
 #include "graphics/shape.h"
 
-using namespace Eigen;
-using namespace std;
-
-using Vec = Vector3d;
-using Mat = Matrix3d;
+using Vec = Eigen::Vector3d;
+using Mat = Eigen::Matrix3d;
 
 
 
@@ -34,11 +31,11 @@ struct Particle
     Particle(Vec x, int c, Vec v = Vec(0, 0, 0)) : x(x),
                                              v(v),
                                              vol(0),
-                                             F(Matrix3d::Identity(3, 3)),
-                                             C(Matrix3d::Zero(3, 3)),
+                                             F(Eigen::Matrix3d::Identity(3, 3)),
+                                             C(Eigen::Matrix3d::Zero(3, 3)),
                                              Jp(1),
-                                             F_e(Matrix3d::Identity(3, 3)),
-                                             F_p(Matrix3d::Identity(3, 3)),
+                                             F_e(Eigen::Matrix3d::Identity(3, 3)),
+                                             F_p(Eigen::Matrix3d::Identity(3, 3)),
                                              c(c) {}
 };
 
@@ -97,7 +94,7 @@ private:
 
     // Vector3: [velocity_x, velocity_y, mass]
 //    Vector3d grid[n + 1][n + 1][n + 1];
-    Vector4d grid[n + 1][n + 1][n + 1];
+    Eigen::Vector4d grid[n + 1][n + 1][n + 1];
 
 
 

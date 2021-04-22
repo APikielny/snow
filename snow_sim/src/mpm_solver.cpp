@@ -5,10 +5,6 @@
 #include <fstream>
 #include "Eigen/SVD"
 
-
-using namespace Eigen;
-using namespace std;
-
 bool sphere_collision = true;
 double force_factor = 10.0f;
 bool render = true;
@@ -78,8 +74,8 @@ static void polar_decomp(const Mat m, Mat& R, Mat& S){
 //        S = R.transpose() * m;
 
     //see relation of SVD to polar decomp: https://en.wikipedia.org/wiki/Polar_decomposition
-    JacobiSVD<MatrixXd> svd(m, ComputeThinU | ComputeThinV); //compute singular value decomposition
-    Matrix3d singular_value_matrix;
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(m, Eigen::ComputeThinU | Eigen::ComputeThinV); //compute singular value decomposition
+    Eigen::Matrix3d singular_value_matrix;
     singular_value_matrix.diagonal()<<svd.singularValues()[0], svd.singularValues()[1], svd.singularValues()[2];
     R = svd.matrixV() * singular_value_matrix * svd.matrixV().transpose();
     S = svd.matrixU() * svd.matrixV().transpose();
@@ -161,7 +157,7 @@ void mpm_solver::initialize()
     /**************************************/
     for (auto &p : particles)
     {
-        Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
+        Eigen::Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
@@ -171,7 +167,7 @@ void mpm_solver::initialize()
             {
                 for (int k = -neighbor; k <= neighbor; k++)
                 {
-                    Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
+                    Eigen::Vector3i curr_grid = Eigen::Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n  && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
                         //p.x = [0,1], base_coord = [0,n], fx is distance from particle position to nearest grid coordinate
@@ -197,14 +193,14 @@ void mpm_solver::initialize()
     for (auto &p : particles)
     {
         double density = 0.0f;
-        Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
+        Eigen::Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
         for (int i = -neighbor; i <= neighbor; i++)
         {
             for (int j = -neighbor; j <= neighbor; j++)
             {
                 for (int k = -neighbor; k <= neighbor; k++)
                 {
-                    Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
+                    Eigen::Vector3i curr_grid = Eigen::Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
                         //p.x = [0,1], base_coord = [0,n], fx is distance from particle position to nearest grid coordinate
@@ -231,30 +227,30 @@ void mpm_solver::initialize()
     /************ RENNDERING **************/
     /**************************************/
     if(render){
-        std::vector<Vector3f> vertices;
-        std::vector<Vector3i> faces;
+        std::vector<Eigen::Vector3f> vertices;
+        std::vector<Eigen::Vector3i> faces;
         int j = 0;
         //vertices of tetrahedron centered at origin with side length ~=offset
         float offset = 0.01;
-        Vector3f v_1 = Vector3f(offset, offset, offset);
-        Vector3f v_2 = Vector3f(-offset, -offset, offset);
-        Vector3f v_3 = Vector3f(-offset, offset, -offset);
-        Vector3f v_4 = Vector3f(offset, -offset, -offset);
+        Eigen::Vector3f v_1 = Eigen::Vector3f(offset, offset, offset);
+        Eigen::Vector3f v_2 = Eigen::Vector3f(-offset, -offset, offset);
+        Eigen::Vector3f v_3 = Eigen::Vector3f(-offset, offset, -offset);
+        Eigen::Vector3f v_4 = Eigen::Vector3f(offset, -offset, -offset);
 
         for(int i = 0; i < particles.size(); i++){
             Vec p = particles[i].x;
-            Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
+            Eigen::Vector3f pos = Eigen::Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
 
             vertices.push_back(v_1+pos);
             vertices.push_back(v_2+pos);
             vertices.push_back(v_3+pos);
             vertices.push_back(v_4+pos);
 
-            Vector4i t = Vector4i(j, j+1, j+2, j+3);
-            Vector3i f_1 = Vector3i(t[3], t[1], t[2]); //opposite t[0]
-            Vector3i f_2 = Vector3i(t[2], t[0], t[3]); //opposite t[1]
-            Vector3i f_3 = Vector3i(t[3], t[0], t[1]); //opposite t[2]
-            Vector3i f_4 = Vector3i(t[1], t[0], t[2]); //opposite t[3]
+            Eigen::Vector4i t = Eigen::Vector4i(j, j+1, j+2, j+3);
+            Eigen::Vector3i f_1 = Eigen::Vector3i(t[3], t[1], t[2]); //opposite t[0]
+            Eigen::Vector3i f_2 = Eigen::Vector3i(t[2], t[0], t[3]); //opposite t[1]
+            Eigen::Vector3i f_3 = Eigen::Vector3i(t[3], t[0], t[1]); //opposite t[2]
+            Eigen::Vector3i f_4 = Eigen::Vector3i(t[1], t[0], t[2]); //opposite t[3]
 
             faces.emplace_back(f_1);
             faces.emplace_back(f_2);
@@ -283,7 +279,7 @@ void mpm_solver::update(double dt)
     {
         //transfer mass
         // element-wise floor
-        Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
+        Eigen::Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
         //loop through neighboring grids [-2,2]
         //add weight * particle_mass to all neighboring grid cells
@@ -293,7 +289,7 @@ void mpm_solver::update(double dt)
             {
                 for (int k = -neighbor; k <= neighbor; k++)
                 {
-                    Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
+                    Eigen::Vector3i curr_grid = Eigen::Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
                         //p.x = [0,1], base_coord = [0,n], fx is distance from particle position to nearest grid coordinate
@@ -321,7 +317,7 @@ void mpm_solver::update(double dt)
     //step one of paper. transfering velocity
     for (auto &p : particles)
     {
-        Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
+        Eigen::Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
 //        add velocity  to all neighboring grid cells
         for (int i = -neighbor; i <= neighbor; i++)
@@ -330,7 +326,7 @@ void mpm_solver::update(double dt)
             {
                 for (int k = -neighbor; k <= neighbor; k++)
                 {
-                    Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
+                    Eigen::Vector3i curr_grid = Eigen::Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
@@ -390,7 +386,7 @@ void mpm_solver::update(double dt)
     for (auto &p : particles)
     {
 
-        Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
+        Eigen::Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
         double V_p_n = p.vol; //page 6
 
@@ -407,7 +403,7 @@ void mpm_solver::update(double dt)
 
         double lambda = lambda_0 * exp(xi * (1.0f - J_p));
 
-        stress = (2.0f * mu) * (p.F_e - Re) * p.F_e.transpose() + lambda * (J_e - 1) * (J_e * Mat(MatrixXd::Identity(3, 3))); // above equation 6
+        stress = (2.0f * mu) * (p.F_e - Re) * p.F_e.transpose() + lambda * (J_e - 1) * (J_e * Mat(Eigen::MatrixXd::Identity(3, 3))); // above equation 6
 
         //loop through neighbourhood [-2, 2]
         for (int i = -neighbor; i <= neighbor; i++)
@@ -416,7 +412,7 @@ void mpm_solver::update(double dt)
             {
                 for (int k = -neighbor; k <= neighbor; k++)
                 {
-                    Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
+                    Eigen::Vector3i curr_grid = Eigen::Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
                         Vec fx = p.x * inv_dx - curr_grid.cast<double>();
@@ -470,7 +466,7 @@ void mpm_solver::update(double dt)
                 {
                     // g /= g[2];
                     // Gravity
-                    g += dt * Vector4d(0, -20000, 0, 0);   //not sure
+                    g += dt * Eigen::Vector4d(0, -20000, 0, 0);   //not sure
 
                     // Node coordinates
                     double x = double(i) / n;
@@ -496,16 +492,16 @@ void mpm_solver::update(double dt)
     /**************************************/
     for (auto &p : particles)
     {
-        Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
+        Eigen::Vector3i base_coord = (p.x * inv_dx - Vec(0.5, 0.5, 0.5)).cast<int>();
 
-        Mat v_p_n_plus_1 = Matrix3d::Zero();
+        Mat v_p_n_plus_1 = Eigen::Matrix3d::Zero();
         for (int i = -neighbor; i <= neighbor; i++)
         {
             for (int j = -neighbor; j <= neighbor; j++)
             {
                 for (int k = -neighbor; k <= neighbor; k++)
                 {
-                    Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
+                    Eigen::Vector3i curr_grid = Eigen::Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                     if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                     { //check bounds 0 to n in both dirs
 
@@ -518,10 +514,10 @@ void mpm_solver::update(double dt)
         }
 
 //        update elastic compoenent - before we do plasticity the elastic component gets all of the F
-        p.F_e = (Mat(MatrixXd::Identity(3, 3)) + dt * v_p_n_plus_1) * p.F_e;
+        p.F_e = (Mat(Eigen::MatrixXd::Identity(3, 3)) + dt * v_p_n_plus_1) * p.F_e;
 
         //plastic component - compiles but is does not change sim.
-        JacobiSVD<MatrixXd> svd(p.F_e, ComputeThinU | ComputeThinV); //compute singular value decomposition
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(p.F_e, Eigen::ComputeThinU | Eigen::ComputeThinV); //compute singular value decomposition
         Mat U_p = svd.matrixU();
         Mat Sig_hat_p = svd.singularValues().asDiagonal();
         Mat V_transpose_p = svd.matrixV().transpose();
@@ -539,8 +535,8 @@ void mpm_solver::update(double dt)
         Mat Sig_p;
         Sig_p = Sig_hat_p;
 
-        Sig_p.col(0)[0] = clamp(Sig_p.col(0)[0], 1 - theta_c, 1 + theta_s); //clamp
-        Sig_p.col(1)[1] = clamp(Sig_p.col(1)[1], 1 - theta_c, 1 + theta_s);
+        Sig_p.col(0)[0] = std::clamp(Sig_p.col(0)[0], 1 - theta_c, 1 + theta_s); //clamp
+        Sig_p.col(1)[1] = std::clamp(Sig_p.col(1)[1], 1 - theta_c, 1 + theta_s);
 
         p.F = p.F_e * p.F_p;
 
@@ -560,7 +556,7 @@ void mpm_solver::update(double dt)
                 for (int k = -neighbor; k <= neighbor; k++)
                 {
 
-                Vector3i curr_grid = Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
+                Eigen::Vector3i curr_grid = Eigen::Vector3i(base_coord.x() + i, base_coord.y() + j, base_coord.z() + k);
                 if (curr_grid.x() >= 0 && curr_grid.x() <= n && curr_grid.y() >= 0 && curr_grid.y() <= n && curr_grid.z() >= 0 && curr_grid.z() <= n)
                 { //check bounds 0 to n in both dirs
                     Vec fx = p.x * inv_dx - curr_grid.cast<double>();
@@ -598,18 +594,18 @@ void mpm_solver::update(double dt)
     /**************************************/
     if(render){
         //for graphical rendering using shaders
-        std::vector<Vector3f> vertices;
+        std::vector<Eigen::Vector3f> vertices;
         //vertices of tetrahedron centered at origin with side length ~=offset
         float offset = 0.01;
-        Vector3f v_1 = Vector3f(offset, offset, offset);
-        Vector3f v_2 = Vector3f(-offset, -offset, offset);
-        Vector3f v_3 = Vector3f(-offset, offset, -offset);
-        Vector3f v_4 = Vector3f(offset, -offset, -offset);
+        Eigen::Vector3f v_1 = Eigen::Vector3f(offset, offset, offset);
+        Eigen::Vector3f v_2 = Eigen::Vector3f(-offset, -offset, offset);
+        Eigen::Vector3f v_3 = Eigen::Vector3f(-offset, offset, -offset);
+        Eigen::Vector3f v_4 = Eigen::Vector3f(offset, -offset, -offset);
 
         for(int i = 0; i < particles.size(); i++){
-            Vector3d p = particles[i].x;
+            Eigen::Vector3d p = particles[i].x;
     //        cout << p << endl;
-            Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
+            Eigen::Vector3f pos = Eigen::Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
 
             vertices.push_back(v_1+pos);
             vertices.push_back(v_2+pos);
@@ -683,11 +679,11 @@ void mpm_solver::add_from_csv(char *infile_path, Vec center, int c)
 
 void mpm_solver::write_to_CSV(){
     std::ofstream myFile;
-    myFile.open("/Users/yuna.hiraide/Desktop/snow_maya/square" + to_string(iteration)+".csv");
+    myFile.open("/Users/yuna.hiraide/Desktop/snow_maya/square" + std::to_string(iteration)+".csv");
 
     for (auto &p : particles)
     {
-        cout << "writinng " << endl;
+        std::cout << "writinng " << std::endl;
         myFile << p.x.x() << ", " << p.x.y() << ", " << p.x.z() << "\n";
     }
     myFile.close();

@@ -4,8 +4,6 @@
 
 #include "graphics/Shader.h"
 
-using namespace Eigen;
-
 Shape::Shape()
     : m_tetVao(-1),
       m_numSurfaceVertices(),
@@ -114,7 +112,7 @@ void Shape::init(const std::vector<Eigen::Vector3f> &vertices, const std::vector
     init(vertices, triangles);
 
     std::vector<Eigen::Vector2i> lines;
-    for(Vector4i tet : tetIndices) {
+    for(Eigen::Vector4i tet : tetIndices) {
         lines.emplace_back(tet[0], tet[1]);
         lines.emplace_back(tet[0], tet[2]);
         lines.emplace_back(tet[0], tet[3]);

@@ -1,0 +1,16 @@
+release/glew.o
+release/main.o
+release/mainwindow.o
+release/mpm_solver.o
+release/vdb_writer.o
+release/view.o
+release/viewformat.o
+release/Shader.o
+release/GraphicsDebug.o
+release/simulation.o
+release/shape.o
+release/camera.o
+release/MeshLoader.o
+release/qrc_shaders.o
+release/moc_mainwindow.o
+release/moc_view.o
