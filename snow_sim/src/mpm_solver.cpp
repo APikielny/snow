@@ -11,8 +11,8 @@ using namespace std;
 
 bool sphere_collision = true;
 double force_factor = 10.0f;
-bool render = true;
-bool write = false;
+bool render = false;
+bool write = true;
 
 static double weight(double x)
 {
@@ -86,7 +86,7 @@ static void polar_decomp(const Mat m, Mat& R, Mat& S){
 
 }
 
-void collide(Vec coords, Vec &velocity){
+void mpm_solver::collide(Vec coords, Vec &velocity){
     // Vec out_vel(0.0f, 0.0f);
 
         //copied from taichi example
@@ -95,20 +95,21 @@ void collide(Vec coords, Vec &velocity){
 
         //added a sphere collider (hemisphere)
         //initial z coordinate to be z coordinate of the value that was passed in
-        Vec circleCenter = Vec(0.5, 0 + boundary, coords.z());
+
         double circleRadius = 0.1f;
         double mu = 0.1;
 
         //if inside the sphere...
         if (sphere_collision)
         {
-            if ((coords.x() - circleCenter.x()) * (coords.x() - circleCenter.x()) + (coords.y() - circleCenter.y()) * (coords.y() - circleCenter.y()) < circleRadius * circleRadius)
+            if ((coords.x() - circleCenter.x()) * (coords.x() - circleCenter.x()) + (coords.y() - circleCenter.y()) * (coords.y() - circleCenter.y()) + (coords.z() - circleCenter.z()) * (coords.z() - circleCenter.z()) < circleRadius * circleRadius)
             {
+                Vec v_rel = sphere_velocity - velocity;
                 Vec n = (coords - circleCenter).normalized();
-                double v_dot_n = velocity.dot(n);
+                double v_dot_n = v_rel.dot(n);
                 if (v_dot_n < 0)
                 { //section 8 body collision
-                    Vec v_t = velocity - n * v_dot_n;
+                    Vec v_t = v_rel - n * v_dot_n;
                     double v_t_norm = pow(v_t.dot(v_t), 0.5);
                     if (v_t_norm > 0)
                     {
@@ -148,9 +149,9 @@ void mpm_solver::initialize()
 //    std::cout << "initializing\n" << std::endl;
 
     //create shapes
-    add_object(Vec(0.55, 0.45, 0.5f), 0xFFFAFA);
-    add_object(Vec(0.45, 0.65, 0.5f), 0xFFFAFA);
-    add_object(Vec(0.55, 0.85, 0.5f), 0xFFFAFA);
+    add_object(Vec(0.55, 0.25, 0.5f), 0xFFFAFA);
+//    add_object(Vec(0.45, 0.65, 0.5f), 0xFFFAFA);
+//    add_object(Vec(0.55, 0.85, 0.5f), 0xFFFAFA);
 
     std::cout << "Number of initialized particles: " << particles.size() << std::endl;
 
@@ -263,12 +264,35 @@ void mpm_solver::initialize()
 
             j+=4;
         }
+
+        Vec p = circleCenter;
+        Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
+
+        vertices.push_back(10.0f*v_1+pos);
+        vertices.push_back(10.0f*v_2+pos);
+        vertices.push_back(10.0f*v_3+pos);
+        vertices.push_back(10.0f*v_4+pos);
+
+        Vector4i t = Vector4i(j, j+1, j+2, j+3);
+        Vector3i f_1 = Vector3i(t[3], t[1], t[2]); //opposite t[0]
+        Vector3i f_2 = Vector3i(t[2], t[0], t[3]); //opposite t[1]
+        Vector3i f_3 = Vector3i(t[3], t[0], t[1]); //opposite t[2]
+        Vector3i f_4 = Vector3i(t[1], t[0], t[2]); //opposite t[3]
+
+        faces.emplace_back(f_1);
+        faces.emplace_back(f_2);
+        faces.emplace_back(f_3);
+        faces.emplace_back(f_4);
+
         m_shape.init(vertices, faces);
     }
 }
 
 void mpm_solver::update(double dt)
 {
+
+    circleCenter += sphere_velocity * dt;
+
 
 //    std::cout<<"update"<<std::endl;
 
@@ -470,7 +494,7 @@ void mpm_solver::update(double dt)
                 {
                     // g /= g[2];
                     // Gravity
-                    g += dt * Vector4d(0, -20000, 0, 0);   //not sure
+//                    g += dt * Vector4d(0, -20000, 0, 0);   //not sure
 
                     // Node coordinates
                     double x = double(i) / n;
@@ -616,6 +640,14 @@ void mpm_solver::update(double dt)
             vertices.push_back(v_3+pos);
             vertices.push_back(v_4+pos);
         }
+        Vec p = circleCenter;
+        Vector3f pos = Vector3f(5*(float)p.x(), 5*(float)p.y(), 5*(float)p.z());
+
+        vertices.push_back(10.0f*v_1+pos);
+        vertices.push_back(10.0f*v_2+pos);
+        vertices.push_back(10.0f*v_3+pos);
+        vertices.push_back(10.0f*v_4+pos);
+
         m_shape.setVertices(vertices);
     }
 
@@ -683,7 +715,7 @@ void mpm_solver::add_from_csv(char *infile_path, Vec center, int c)
 
 void mpm_solver::write_to_CSV(){
     std::ofstream myFile;
-    myFile.open("/Users/yuna.hiraide/Desktop/snow_maya/square" + to_string(iteration)+".csv");
+    myFile.open("/Users/Adam/Desktop/cs2240/snow/sphere_cube_collide/" + to_string(iteration)+".csv");
 
     for (auto &p : particles)
     {

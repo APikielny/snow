@@ -55,7 +55,9 @@ public:
 
     std::vector<Particle> particles;
 
-    void vdb_write(std::string file);
+//    void vdb_write(std::string file);
+
+    void collide(Vec coords, Vec &velocity);
 
 private:
     //for rendering
@@ -65,10 +67,10 @@ private:
     const int window_size = 800;
 
     // Grid resolution (cells)
-    const static int n = 80;
+    const static int n = 40;
 
     //number of particles per object
-    const int num_particles = 500.f;
+    const int num_particles = 1000;
 
     const double dt = 1e-4f;
     const double frame_dt = 1e-3f;
@@ -99,6 +101,8 @@ private:
 //    Vector3d grid[n + 1][n + 1][n + 1];
     Vector4d grid[n + 1][n + 1][n + 1];
 
+    Vec circleCenter = Vec(0.5, 0.25, 0.5);
+    Vec sphere_velocity = Vec(10.0f, 0.00f, 0.f);
 
 
     void add_object(Vec center, int c);
