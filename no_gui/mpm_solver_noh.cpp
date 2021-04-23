@@ -51,7 +51,7 @@ struct Particle
 
 void mpm_solver();
 void initialize();
-    void update(double dt);
+    void update();
     int run(int argc, char* argv[]);
     // void draw(Shader *shader);
     void add_from_csv(char *infile_path, Vec center, int c);
@@ -365,10 +365,12 @@ void initialize()
 
 }
 
-void update(double dt)
+void update()
 {
-
    std::cout<<"update"<<std::endl;
+
+        double dt = 0.4;
+
 
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
@@ -849,12 +851,17 @@ return 0;
 int main(){
 
     initialize();
-     for (int step = 0;; step++)
-{
-        std::cout<<"854"<<std::endl;
+    std::cout<<"here3"<<std::endl;
 
-       update(dt);
-}
+    update();
+
+    std::cout<<"here"<<std::endl;
+//      for (int step = 0;; step++)
+// {
+//         std::cout<<"here2"<<std::endl;
+//         std::cout<<"here3"<<std::endl;
+
+// }
 
     return 0;
 

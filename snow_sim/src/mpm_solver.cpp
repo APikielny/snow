@@ -11,7 +11,7 @@ using namespace std;
 
 bool sphere_collision = true;
 double force_factor = 10.0f;
-bool render = false;
+bool render = true;
 bool write = false;
 
 static double weight(double x)
