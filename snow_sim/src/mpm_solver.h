@@ -65,10 +65,10 @@ private:
     const int window_size = 800;
 
     // Grid resolution (cells)
-    const static int n = 40;
+    const static int n = 80;
 
     //number of particles per object
-    const int num_particles = 50.f;
+    const int num_particles = 500.f;
 
     const double dt = 1e-4f;
     const double frame_dt = 1e-3f;
