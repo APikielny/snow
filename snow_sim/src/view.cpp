@@ -49,7 +49,7 @@ void View::initializeGL()
 
     m_shader = new Shader(":/shaders/shader.vert", ":/shaders/shader.frag");
 //    m_sim.add_from_csv("/Users/Adam/Desktop/cs2240/snow/csv/sparse_cow.csv", Vec(0.55, 0.85, 0.f), 0xF2B134);
-    m_sim.initialize();
+//    m_sim.initialize();
 
     m_camera.setPosition(Eigen::Vector3f(2, 2, -7));
     m_camera.lookAt(Eigen::Vector3f(0, 2, -5), Eigen::Vector3f(0, 2, 0), Eigen::Vector3f(0, 1, 0));
@@ -68,7 +68,7 @@ void View::paintGL()
     Eigen::Matrix4f mvp = m_camera.getProjection() * m_camera.getView();
     m_shader->setUniform("m", model);
     m_shader->setUniform("vp", mvp);
-    m_sim.draw(m_shader);
+//    m_sim.draw(m_shader);
     m_shader->unbind();
 }
 
@@ -174,26 +174,27 @@ void View::keyReleaseEvent(QKeyEvent *event)
         m_vertical -= 1;
     }
     else if(event->key() == Qt::Key_T) {
-        m_sim.update(1e-4f);
+//        m_sim.update(1e-4f);
     }
 }
 
 void View::tick()
 {
-    float seconds = m_time.restart() * 0.001f;
-    m_sim.update(1e-4f);
+//    float seconds = m_time.restart() * 0.001f;
+////    m_sim.update(1e-4f);
+////    std::cout << "update" << endl;
 
-    std::string outfile;
-    m_sim.vdb_write(outfile);
+//    std::string outfile;
+////    m_sim.vdb_write(outfile);
 
-    auto look = m_camera.getLook();
-    look.y() = 0;
-    look.normalize();
-    Eigen::Vector3f perp(-look.z(), 0, look.x());
-    Eigen::Vector3f moveVec = m_forward * look + m_sideways * perp + m_vertical * Eigen::Vector3f::UnitY();
-    moveVec *= seconds;
-    m_camera.move(moveVec);
-    // Flag this view for repainting (Qt will call paintGL() soon after)
-    update();
+//    auto look = m_camera.getLook();
+//    look.y() = 0;
+//    look.normalize();
+//    Eigen::Vector3f perp(-look.z(), 0, look.x());
+//    Eigen::Vector3f moveVec = m_forward * look + m_sideways * perp + m_vertical * Eigen::Vector3f::UnitY();
+//    moveVec *= seconds;
+//    m_camera.move(moveVec);
+//    // Flag this view for repainting (Qt will call paintGL() soon after)
+//    update();
 
 }
