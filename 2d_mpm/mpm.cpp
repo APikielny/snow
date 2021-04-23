@@ -34,8 +34,10 @@ const real alpha = 0.05;
 const real particle_mass = 1.0f;
 const real vol = 1.0_f; // Particle Volume
 const real xi = 10.0_f; // Snow hardening factor
-const real E = 1e4_f;   // Young's Modulus
-const real nu = 0.2_f;  // Poisson ratio
+// const real E = 1e4_f;   // Young's Modulus
+const real E = 1e3_f; // Young's Modulus
+
+const real nu = 0.2_f; // Poisson ratio
 const bool plastic = true;
 
 // Initial Lamé parameters
@@ -47,6 +49,7 @@ const int neighbor = 3; //[from -neighbor to neighbor]
 int iteration = 0;
 
 bool sphere_collision = true;
+Vec sphere_velocity(10.0f, 0.00f);
 
 struct Particle
 {
@@ -139,6 +142,8 @@ std::vector<Particle> particles;
 // Vector3: [velocity_x, velocity_y, mass]
 Vector3 grid[n + 1][n + 1];
 
+Vec circleCenter = Vec(0.50, 0.25);
+
 //takes in current node coordinates and velocity and outputs velocity after collision
 void collide(Vec coords, Vec &velocity)
 {
@@ -149,7 +154,6 @@ void collide(Vec coords, Vec &velocity)
     real boundary = 0.05;
 
     //added a sphere collider (hemisphere)
-    Vec circleCenter = Vec(0.5, 0.2 + boundary);
     real circleRadius = 0.05;
     real mu = 0.1;
 
@@ -158,11 +162,15 @@ void collide(Vec coords, Vec &velocity)
     {
         if ((coords.x - circleCenter.x) * (coords.x - circleCenter.x) + (coords.y - circleCenter.y) * (coords.y - circleCenter.y) < circleRadius * circleRadius)
         {
+
+            // Vec v_rel = sphere_velocity - velocity;
+            Vec v_rel = velocity;
+
             Vec n = normalized(coords - circleCenter);
-            real v_dot_n = velocity.dot(n);
+            real v_dot_n = v_rel.dot(n);
             if (v_dot_n < 0)
             { //section 8 body collision
-                Vec v_t = velocity - n * v_dot_n;
+                Vec v_t = v_rel - n * v_dot_n;
                 real v_t_norm = pow(v_t.dot(v_t), 0.5);
                 if (v_t_norm > 0)
                 {
@@ -258,6 +266,8 @@ void initialize()
 
 void update(real dt)
 {
+
+    // circleCenter += sphere_velocity * dt;
 
     // Reset grid
     std::memset(grid, 0, sizeof(grid));
@@ -630,7 +640,7 @@ int main(int argc, char *argv[])
 
     if (argc == 1) //default
     {
-        add_object(Vec(0.55, 0.45), 0xFFFAFA);
+        add_object(Vec(0.50, 0.55), 0xFFFAFA);
         // add_object(Vec(0.45, 0.65), 0xFFFAFA);
         // add_object(Vec(0.55, 0.85), 0xFFFAFA);
     }
@@ -669,6 +679,11 @@ int main(int argc, char *argv[])
             canvas.clear(0x112F41);
             // Box
             canvas.rect(Vec(0.04), Vec(0.96)).radius(2).color(0x4FB99F).close();
+            if (circleCenter.x < window_size - 100)
+            {
+                canvas.circle(circleCenter).radius(window_size * 0.05).color(0xE54E69);
+            }
+
             // Particles
             for (auto p : particles)
             {
