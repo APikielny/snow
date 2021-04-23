@@ -138,6 +138,7 @@ void collide(Vec coords, Vec &velocity){
 
 mpm_solver::mpm_solver()
 {
+    std::cout<<"here"<<std::endl;
 }
 
 
@@ -752,14 +753,7 @@ return 0;
 
 int main(){
     std::cout<<"753"<<std::endl;
-    mpm_solver ms = mpm_solver();
-//         std::cout<<"755"<<std::endl;
 
-//     ms.initialize();
-//     for (int step = 0;; step++)
-//    {
-//        ms.update(ms.dt);
-//    }
     return 0;
 
 }
